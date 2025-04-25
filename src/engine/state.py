@@ -8,8 +8,139 @@ import random
 import pygame
 
 from entities.collectible import HealthPack, ShieldPack, Star
-from entities.enemy import BasicEnemy, ShooterEnemy, ZigzagEnemy
+from entities.enemy import (
+    BasicEnemy,
+    DartEnemy,
+    HeavyBomber,
+    ShieldBearerEnemy,
+    ShooterEnemy,
+    ZigzagEnemy,
+)
 from entities.player import Player
+
+
+class ParallaxBackground:
+    """A multi-layered scrolling background system."""
+
+    def __init__(self, screen_width, screen_height):
+        """Initialize the parallax background.
+
+        Args:
+            screen_width (int): Width of the screen
+            screen_height (int): Height of the screen
+        """
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+        self.layers = []
+
+        # Create star layers with different speeds
+        self._create_star_layers()
+
+        # Create nebula layer
+        self._create_nebula_layer()
+
+    def _create_star_layers(self):
+        """Create multiple layers of stars with varying speeds."""
+        # Distant stars (slowest)
+        stars_distant = []
+        for _ in range(50):
+            x = random.randint(0, self.screen_width)
+            y = random.randint(0, self.screen_height)
+            size = 1  # Small stars
+            color = (150, 150, 200)  # Light blue/purple
+            stars_distant.append({"x": x, "y": y, "size": size, "color": color})
+
+        # Mid-distance stars
+        stars_mid = []
+        for _ in range(75):
+            x = random.randint(0, self.screen_width)
+            y = random.randint(0, self.screen_height)
+            size = 2  # Medium stars
+            color = (200, 200, 255)  # Brighter blue/white
+            stars_mid.append({"x": x, "y": y, "size": size, "color": color})
+
+        # Close stars (fastest)
+        stars_close = []
+        for _ in range(50):
+            x = random.randint(0, self.screen_width)
+            y = random.randint(0, self.screen_height)
+            size = 3  # Larger stars
+            color = (255, 255, 255)  # Bright white
+            stars_close.append({"x": x, "y": y, "size": size, "color": color})
+
+        # Add layers to the background
+        self.layers.append({"objects": stars_distant, "speed": 10, "type": "stars"})
+        self.layers.append({"objects": stars_mid, "speed": 20, "type": "stars"})
+        self.layers.append({"objects": stars_close, "speed": 30, "type": "stars"})
+
+    def _create_nebula_layer(self):
+        """Create a nebula cloud layer effect."""
+        nebulae = []
+        for _ in range(3):
+            x = random.randint(0, self.screen_width)
+            y = random.randint(0, self.screen_height)
+            size = random.randint(100, 300)
+            # Create a random color with transparency
+            color = (
+                random.randint(50, 150),  # R
+                random.randint(50, 150),  # G
+                random.randint(150, 250),  # B
+                random.randint(30, 80),  # Alpha
+            )
+            nebulae.append({"x": x, "y": y, "size": size, "color": color})
+
+        # Add nebula layer
+        self.layers.append({"objects": nebulae, "speed": 5, "type": "nebula"})
+
+    def update(self, dt):
+        """Update all background layers.
+
+        Args:
+            dt (float): Time elapsed since last update in seconds
+        """
+        # Update each layer
+        for layer in self.layers:
+            for obj in layer["objects"]:
+                # Move objects down
+                obj["y"] += layer["speed"] * dt
+
+                # Wrap around screen when objects go off-screen
+                if obj["y"] - obj["size"] > self.screen_height:
+                    obj["y"] = -obj["size"]
+                    obj["x"] = random.randint(0, self.screen_width)
+
+    def render(self, screen):
+        """Render all background layers.
+
+        Args:
+            screen (pygame.Surface): Screen to render to
+        """
+        # Render each layer in order (bottom to top)
+        for layer in self.layers:
+            if layer["type"] == "stars":
+                for obj in layer["objects"]:
+                    # Draw simple circular stars
+                    pygame.draw.circle(
+                        screen, obj["color"], (int(obj["x"]), int(obj["y"])), obj["size"]
+                    )
+            elif layer["type"] == "nebula":
+                for obj in layer["objects"]:
+                    # Create a surface with alpha for the nebula
+                    size = obj["size"]
+                    nebula_surface = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+
+                    # Draw nebula cloud as a gradient circle
+                    for radius in range(size, 0, -10):
+                        alpha = int(255 * (radius / size))
+                        color = list(obj["color"])
+                        if len(color) >= 4:
+                            color[3] = min(color[3], alpha)
+                        else:
+                            color.append(alpha)
+                        pygame.draw.circle(nebula_surface, tuple(color), (size, size), radius)
+
+                    # Blit the nebula to the screen
+                    screen.blit(nebula_surface, (int(obj["x"] - size), int(obj["y"] - size)))
 
 
 class State:
@@ -71,14 +202,33 @@ class MenuState(State):
         self.title_rect = self.title_text.get_rect(center=(game.width // 2, game.height // 3))
 
         self.font_small = pygame.font.Font(None, 36)
-        self.start_text = self.font_small.render("Press SPACE to Start", True, (200, 200, 200))
-        self.start_rect = self.start_text.get_rect(center=(game.width // 2, game.height // 2))
 
-        self.shop_text = self.font_small.render("Press S to Shop", True, (200, 200, 200))
-        self.shop_rect = self.shop_text.get_rect(center=(game.width // 2, game.height // 2 + 50))
+        # Menu options will be updated in enter()
+        self.menu_options = []
+        self.selected_option = 0
+        self.update_menu_options()
 
-        self.exit_text = self.font_small.render("Press ESC to Exit", True, (200, 200, 200))
-        self.exit_rect = self.exit_text.get_rect(center=(game.width // 2, game.height // 2 + 100))
+    def update_menu_options(self):
+        """Update menu options based on game state."""
+        self.menu_options = []
+
+        # Show Resume Game only if there's a saved game
+        if self.game.has_saved_game:
+            self.menu_options.append({"text": "Resume Game", "key": pygame.K_r, "action": "resume"})
+
+        # Always show New Game and Shop
+        self.menu_options.append({"text": "New Game", "key": pygame.K_n, "action": "new_game"})
+        self.menu_options.append({"text": "Shop", "key": pygame.K_s, "action": "shop"})
+        self.menu_options.append({"text": "Exit", "key": pygame.K_ESCAPE, "action": "exit"})
+
+        # Ensure selected option is valid
+        if self.selected_option >= len(self.menu_options):
+            self.selected_option = 0
+
+    def enter(self):
+        """Called when entering this state."""
+        # Update menu options when entering the state
+        self.update_menu_options()
 
     def handle_event(self, event):
         """Handle input events for the menu state.
@@ -87,10 +237,36 @@ class MenuState(State):
             event: The pygame event to handle
         """
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
-                self.game.change_state("playing")
-            elif event.key == pygame.K_s:
-                self.game.change_state("shop")
+            # Handle menu navigation
+            if event.key == pygame.K_UP:
+                self.selected_option = (self.selected_option - 1) % len(self.menu_options)
+            elif event.key == pygame.K_DOWN:
+                self.selected_option = (self.selected_option + 1) % len(self.menu_options)
+            elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+                self.execute_selected_action()
+            else:
+                # Check for hotkeys
+                for i, option in enumerate(self.menu_options):
+                    if event.key == option["key"]:
+                        self.selected_option = i
+                        self.execute_selected_action()
+                        break
+
+    def execute_selected_action(self):
+        """Execute the currently selected menu action."""
+        action = self.menu_options[self.selected_option]["action"]
+
+        if action == "resume":
+            # Resume saved game
+            self.game._load_game_data()  # Reload data to ensure it's fresh
+            self.game.change_state("playing")
+        elif action == "new_game":
+            # Start new game
+            self.game.start_new_game()
+        elif action == "shop":
+            self.game.change_state("shop")
+        elif action == "exit":
+            self.game.running = False
 
     def render(self, screen):
         """Render the menu state.
@@ -101,11 +277,16 @@ class MenuState(State):
         # Draw background (could be a starfield or something)
         screen.fill((0, 0, 40))
 
-        # Draw title and menu options
+        # Draw title
         screen.blit(self.title_text, self.title_rect)
-        screen.blit(self.start_text, self.start_rect)
-        screen.blit(self.shop_text, self.shop_rect)
-        screen.blit(self.exit_text, self.exit_rect)
+
+        # Draw menu options
+        for i, option in enumerate(self.menu_options):
+            # Highlight selected option
+            color = (255, 255, 100) if i == self.selected_option else (200, 200, 200)
+            text = self.font_small.render(option["text"], True, color)
+            rect = text.get_rect(center=(self.game.width // 2, self.game.height // 2 + i * 50))
+            screen.blit(text, rect)
 
 
 class ShopState(State):
@@ -378,22 +559,25 @@ class PlayingState(State):
             game: Reference to the main game object
         """
         super().__init__(game)
-        # Background scrolling
-        self.bg_y = 0
-        self.bg_speed = 100  # pixels per second
-        self.font = pygame.font.Font(None, 24)
 
-        # Game entities
+        # Initialize sprite groups
         self.all_sprites = pygame.sprite.Group()
+        self.enemies = pygame.sprite.Group()
         self.player_projectiles = pygame.sprite.Group()
         self.player_missiles = pygame.sprite.Group()
-        self.enemies = pygame.sprite.Group()
         self.enemy_projectiles = pygame.sprite.Group()
         self.collectibles = pygame.sprite.Group()
 
         # Create player
         self.player = Player(game.width // 2, game.height - 100)
         self.all_sprites.add(self.player)
+
+        # Background scrolling
+        self.bg_y = 0
+        self.scroll_speed = 1.0
+
+        # Initialize parallax background
+        self.background = ParallaxBackground(game.width, game.height)
 
         # Game timing
         self.game_time = 0
@@ -427,37 +611,39 @@ class PlayingState(State):
                     {"type": "zigzag", "count": 1, "interval": 3.0},
                 ],
             },
-            # Wave 4: Zigzag enemies + Shooter
+            # Wave 4: Zigzag enemies + Shooter + Dart
             {
                 "duration": 15,
                 "enemies": [
                     {"type": "zigzag", "count": 1, "interval": 3.0},
                     {"type": "shooter", "count": 1, "interval": 5.0},
+                    {"type": "dart", "count": 2, "interval": 4.0},
                 ],
             },
-            # Wave 5: Mini-boss wave
+            # Wave 5: Shield bearers + basic enemies
+            {
+                "duration": 20,
+                "enemies": [
+                    {"type": "basic", "count": 2, "interval": 3.0},
+                    {"type": "shield", "count": 2, "interval": 5.0},
+                ],
+            },
+            # Wave 6: Mini-boss wave with mixed enemies
             {
                 "duration": 30,
                 "enemies": [
                     {"type": "basic", "count": 1, "interval": 4.0},
                     {"type": "shooter", "count": 1, "interval": 6.0},
                     {"type": "zigzag", "count": 1, "interval": 4.0},
-                    {"type": "heavy", "count": 1, "interval": 8.0},
+                    {"type": "dart", "count": 1, "interval": 3.0},
+                    {"type": "shield", "count": 1, "interval": 7.0},
+                    {"type": "heavy", "count": 1, "interval": 10.0},
                 ],
             },
         ]
 
         # Enemy spawn timing for current wave
         self.enemy_spawn_timers = {}
-
-        # Draw stars for scrolling background
-        self.stars = []
-        for _ in range(150):  # More stars for better background
-            x = random.randint(0, game.width)
-            y = random.randint(0, game.height)
-            size = random.randint(1, 3)
-            brightness = random.randint(100, 255)
-            self.stars.append((x, y, size, brightness))
 
         # Game progression data
         self.total_stars_collected = 0
@@ -565,8 +751,14 @@ class PlayingState(State):
         self._update_enemies(dt)
         self._update_collectibles(dt)
 
+        # Update background
+        self.background.update(dt)
+
         # Check collisions
         self._check_collisions()
+
+        # Spawn any necessary enemies
+        self._process_wave_spawns(dt)
 
     def _update_level_timing(self, dt):
         """Update level timing and wave progression.
@@ -613,7 +805,7 @@ class PlayingState(State):
             dt: Time elapsed since last update in seconds
         """
         # Update scrolling background
-        self.bg_y = (self.bg_y + self.bg_speed * dt) % self.game.height
+        self.bg_y = (self.bg_y + self.scroll_speed * dt) % self.game.height
 
         # Get pressed keys
         keys = pygame.key.get_pressed()
@@ -704,10 +896,11 @@ class PlayingState(State):
         elif enemy_type == "shooter":
             enemy = ShooterEnemy(x, -50)
         elif enemy_type == "heavy":
-            # TODO: Implement HeavyEnemy class
-            enemy = BasicEnemy(x, -50)
-            enemy.health = 30  # Temporary heavy enemy
-            enemy.value = 30
+            enemy = HeavyBomber(x, -50)
+        elif enemy_type == "dart":
+            enemy = DartEnemy(x, -50)
+        elif enemy_type == "shield":
+            enemy = ShieldBearerEnemy(x, -50)
         else:
             enemy = BasicEnemy(x, -50)
 
@@ -863,20 +1056,20 @@ class PlayingState(State):
         Args:
             screen: The pygame surface to render to
         """
-        # Draw scrolling background
-        screen.fill((5, 5, 30))
+        # Fill the screen with black
+        screen.fill((0, 0, 40))  # Very dark blue background
 
-        # Draw stars to simulate scrolling
-        for i, (x, y, size, brightness) in enumerate(self.stars):
-            # Calculate y position with scrolling
-            y_pos = (y + self.bg_y * 0.5) % self.game.height
-            # Draw star
-            color = (brightness, brightness, brightness)
-            pygame.draw.rect(screen, color, (x, y_pos, size, size))
+        # Draw parallax background
+        self.background.render(screen)
 
         # Draw all sprites
         self.all_sprites.draw(screen)
 
+        # Draw UI elements
+        self._draw_ui(screen)
+
+    def _draw_ui(self, screen):
+        """Draw user interface elements."""
         # Draw HUD
         health_text = f"Health: {int(self.player.health)}/{self.player.max_health}"
         shield_text = (

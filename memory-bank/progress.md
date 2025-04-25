@@ -1,209 +1,159 @@
-# Machines of God - Progress
+# Project Progress
 
-## Project Status: Early Development Phase
+## Development Phases
 
-We have successfully implemented the core gameplay systems and are now expanding the game with additional features and polish.
+### Phase 1: Core Game Loop ✅
+- ✅ Basic game state management
+- ✅ Player movement and controls
+- ✅ Basic enemy spawning
+- ✅ Projectile system
+- ✅ Collision detection
+- ✅ Score tracking
+- ✅ Game over condition
 
-## Completed Items
+### Phase 2: Enhanced Gameplay 🔄
+- ✅ Angle-based shooting system
+- ✅ Save/load functionality
+- ✅ Main menu with resume option
+- ✅ Multiple enemy types (Basic, ZigZag, HeavyBomber)
+- ✅ Multiple projectile patterns
+- ✅ Basic collectible system
+- 🔄 Enemy formations and coordinated attacks
+- 🔄 Advanced movement patterns
+- 🔄 Environmental hazards and obstacles
+- 🔄 Enhanced visual backgrounds
+- 🔄 Visual and audio feedback
+- 🔄 Progression system refinement
+
+### Phase 3: Content Expansion ⏳
+- ⏳ Level structure and progression
+- ⏳ Boss enemies
+- ⏳ Additional weapon types
+- ⏳ Environmental hazards
+- ⏳ Power-up system expansion
+- ⏳ Special abilities
+
+### Phase 4: Polish and Release ⏳
+- ⏳ Sound design and music
+- ⏳ Visual effects and particles
+- ⏳ Menu and UI refinement
+- ⏳ Performance optimization
+- ⏳ Tutorial and help system
+- ⏳ Final balancing
+
+## Current Milestone: Enemy Variety and Combat Enhancement
+
+### Completed
+- ✅ Basic enemy implementation with straight movement
+- ✅ ZigZag enemy with erratic movement patterns
+- ✅ HeavyBomber enemy with high health and high point value
+- ✅ Player missile system with basic tracking
+- ✅ Multiple projectile patterns (single, double, triple, quad)
+- ✅ Angle-based shooting for player
+- ✅ Save/load system with JSON persistence
+- ✅ "Resume Game" functionality in main menu
+- ✅ Basic collectible implementation
+
+### In Progress
+- 🔄 Enemy spawning patterns and formation system
+- 🔄 Additional enemy types:
+  - 🔄 DartEnemy: Fast-moving enemies with dash attacks
+  - 🔄 ShieldBearer: Directional shield requiring tactical approach
+  - 🔄 TeleporterEnemy: Enemies that can teleport
+  - 🔄 SplitterEnemy: Divides into smaller units when destroyed
+  - 🔄 Other specialized enemy types
+- 🔄 Formation manager implementation
+- 🔄 Enhanced visual backgrounds
+  - 🔄 Parallax scrolling star layers
+  - 🔄 Nebula effects and visual variety
+- 🔄 Environmental obstacles
+  - 🔄 Asteroid fields
+  - 🔄 Energy barriers
+  - 🔄 Gravity wells
+- 🔄 Balance adjustment for enemy attributes
+- 🔄 Collision detection refinement
+- 🔄 Missile behavior and tracking improvements
+- 🔄 Visual feedback enhancements
+
+### Pending
+- ⏳ Advanced enemy types (PulsarEnemy, MineLayer, etc.)
+- ⏳ Boss enemy implementation
+- ⏳ Permanent upgrade system
+- ⏳ Level structure and progression
+- ⏳ Audio implementation
+- ⏳ Visual effects system
+
+## Technical Achievements
 
 ### Core Systems
-- [x] Basic game loop implementation
-- [x] State management framework
-- [x] Entity component system
-- [x] Resource management system
-- [x] Save/load system
-- [x] Upgrade shop system
-- [x] Wave-based enemy spawning
-- [x] Collision detection
-- [x] Projectile system
-- [x] Directional movement and firing system
+- ✅ State-based game architecture
+- ✅ Efficient collision detection
+- ✅ Entity management system
+- ✅ Save/load functionality
+- ✅ Flexible projectile system
 
-### Player Features
-- [x] Player spacecraft with directional movement
-- [x] Multiple weapon patterns based on upgrades
-- [x] Shield system with recharge
-- [x] Missile system with homing capabilities
-- [x] Auto-centering rotation with pause timer
-- [x] Lives and respawn system
-- [x] Visually distinct ship with directional indicators
+### Optimization
+- ✅ Basic performance tuning
+- 🔄 Object pooling investigation
+- 🔄 Render optimization
+- ⏳ Memory usage optimization
+- ⏳ Loading time improvements
 
-### Enemy Features
-- [x] Basic enemy type with simple movement
-- [x] Zigzag enemy with side-to-side pattern
-- [x] Shooter enemy that fires projectiles
-- [x] Heavy Bomber enemy with high health
-- [x] Enemy variant system with randomized stats
-- [x] Wave-based progression
+### User Experience
+- ✅ Responsive controls
+- ✅ Basic UI elements
+- 🔄 Menu refinement
+- 🔄 Visual feedback
+- 🔄 Background environment system
+- ⏳ Audio feedback
+- ⏳ Tutorial system
 
-### Collectibles and Powerups
-- [x] Star collection for currency
-- [x] Health packs for healing
-- [x] Shield packs for shield recharge
-- [x] Magnet system for attracting collectibles
+## Known Issues
 
-### UI and Game Flow
-- [x] Main menu with Resume Game/New Game options
-- [x] Shop interface for purchasing upgrades
-- [x] In-game HUD with player stats
-- [x] Level completion system
-- [x] Score tracking
-
-### Infrastructure
-- [x] Set up package management with uv and pyproject.toml
-- [x] Defined project dependencies
-- [x] Configured Ruff linter for code quality
-- [x] Configured mypy for static type checking
-- [x] Created development guides for linting and typing
-- [x] Git repository with commit history
-- [x] Pre-commit hooks for code quality
-
-## In Progress
-
-### Gameplay Features
-- [ ] Boss enemy implementation for level endings
-- [ ] Additional enemy types (Kamikaze)
-- [ ] Level selection system
-- [ ] Difficulty settings
-
-### Visual and Audio
-- [ ] Enhanced visual effects for collisions and explosions
-- [ ] Sound effects for game actions
-- [ ] Background music
-- [ ] Improved sprite artwork
-
-### Quality Assurance
-- [ ] Performance optimization
-- [ ] Game balance refinement
-- [ ] Comprehensive testing
-
-## Upcoming Work
-
-### Enemy System Overhaul
-- [ ] Dynamic enemy formations (V-shapes, circles, grids)
-- [ ] Variable enemy stats with procedural generation
-- [ ] Advanced movement patterns (Bezier curves, orbits, flocking)
-- [ ] Enemy behavior specialization (tanks, snipers, support)
-- [ ] Multi-directional attack patterns
-- [ ] Enemy transformations and multi-stage behaviors
-- [ ] Pattern-based bullet hell sequences
-
-### Upgrade System Expansion
-- [ ] Trade-off based upgrades (speed vs. power, etc.)
-- [ ] Specialization paths with branch-specific abilities
-- [ ] Synergistic upgrade combinations
-- [ ] Visual ship changes based on upgrade path
-- [ ] Temporary boosters and special abilities
-
-### Player Mechanics Enhancement 
-- [ ] Resource management systems (thruster fuel, weapon energy)
-- [ ] Special maneuvers (barrel roll, dash, screen-clearing bomb)
-- [ ] Expanded control schemes and customization
-- [ ] Advanced combat mechanics (combos, critical hits)
-- [ ] Weakpoint targeting system
-
-### Visual and Feedback Systems
-- [ ] Sprite-based animations for all entities
-- [ ] Particle effect system for explosions and impacts
-- [ ] Dynamic lighting for weapons and engines
-- [ ] Screen shake and visual impact effects
-- [ ] Enhanced UI with threat indicators
-- [ ] Comprehensive sound effect library
-- [ ] Dynamic music system based on gameplay intensity
-
-### Game Modes
-- [ ] Story mode with narrative progression
-- [ ] Arcade mode with endless waves
-- [ ] Challenge mode with specialized missions
-- [ ] Boss rush mode
-- [ ] Daily/weekly challenges
-
-### Collectible System Overhaul
-- [ ] Tiered star values with rarity system
-- [ ] Star burst patterns and formations
-- [ ] Collection combo multipliers
-- [ ] Diverse pickup types with temporary effects
-- [ ] Multiple resource types for different upgrades
-
-### Assets
-- [ ] Improved sprites for all game entities
-- [ ] Animation system for smoother visuals
-- [ ] Particle effects system
-- [ ] Complete sound library
-
-### Quality Assurance
-- [ ] Extended test coverage
-- [ ] Performance profiling and optimization
-- [ ] Difficulty curve balancing
-
-## Current Blockers
-
-- None currently identified
-
-## Milestones
-
-### Milestone 1: Core Gameplay ✅ COMPLETED
-- [x] Player spacecraft with movement controls
-- [x] Basic enemy spawning
-- [x] Simple shooting mechanics
-- [x] Scrolling background
-- [x] Collision detection and basic game over state
-
-### Milestone 2: Game Systems ✅ COMPLETED
-- [x] Multiple enemy types
-- [x] Upgrade shop system
-- [x] Level progression
-- [x] Basic UI elements
-- [x] Score tracking
-- [x] Save/load functionality
-
-### Milestone 3: Content Expansion 🚧 IN PROGRESS
-- [ ] Multiple levels
-- [ ] Boss battles
-- [x] Weapon upgrades
-- [ ] Complete sound design
-- [ ] Visual effects
-
-### Milestone 4: Polishing 🔜 UPCOMING
-- [x] Menu system
-- [ ] Settings and configuration
-- [ ] Performance optimization
-- [ ] Final assets
-- [ ] Release preparation
-
-## Known Issues & Improvement Areas
-
-- Enemy variety and behaviors are too simplistic and predictable
-- Visuals lack impact with insufficient feedback for hits and explosions
-- No sprite-based animation system, making characters look static
-- Upgrade system lacks meaningful trade-offs and specialization paths
-- Star collection system is monotonous without variety or combo mechanics
-- No resource management systems for player (fuel, energy, etc.)
-- Movement and control system lacks special maneuvers
-- Sound and music system not implemented
-- Visuals for enemies and player are placeholder quality
-- Level design lacks variety and dynamic elements
-- No narrative or story mode implemented
-- Enemies don't form interesting patterns or coordinated groups
-- No particle effects for explosions, thrusters, or weapons
-
-## Recent Achievements
-
-- Successfully implemented directional movement and firing system
-- Added visually distinct player ship with clear directional indicators
-- Implemented smooth auto-centering rotation with pause timer
-- Fixed missile and projectile collision detection
-- Added resume/new game functionality with proper save state management
-- Refactored complex code sections to improve maintainability
+1. Collision detection edge cases with fast-moving objects
+2. Occasional frame rate drops with many entities
+3. Enemy spawning needs better pacing and variety
+4. UI elements need polish and consistency
+5. Need improved visual feedback for player actions
+6. Background is currently too static and simple
 
 ## Next Steps
 
-1. Implement basic enemy formation system with coordinated movement patterns
-2. Create prototype of variable enemy stats using procedural generation
-3. Develop particle system for explosions and visual impact effects
-4. Design and implement tiered star collection system with rarity
-5. Add resource management system for player (thruster fuel, energy)
-6. Create prototype of trade-off based upgrade system
-7. Implement sprite-based animation system for enemies and player
-8. Develop sound effect framework for game actions
-9. Design story mode structure and initial narrative
-10. Create prototype of special maneuvers (barrel roll, dash) 
+1. **Short Term (1-2 weeks)**
+   - Implement DartEnemy and ShieldBearer enemy types
+   - Create basic formation system with static formations
+   - Implement parallax scrolling background
+   - Add simple asteroid obstacles
+   - Improve missile tracking and collision behavior
+   - Add visual feedback for player actions
+
+2. **Medium Term (3-4 weeks)**
+   - Complete remaining enemy types (at least 10 total)
+   - Implement dynamic formation behaviors
+   - Add environmental hazards (gravity wells, barriers)
+   - Implement permanent upgrade system
+   - Begin audio implementation
+   - Add basic particle effects
+
+3. **Long Term (1-2 months)**
+   - Complete level structure
+   - Implement boss enemies
+   - Enhance environmental obstacles
+   - Polish UI and visual effects
+   - Conduct performance optimization
+
+## Milestone Tracking
+
+| Milestone | Target | Status | Progress |
+|-----------|--------|--------|----------|
+| Core Game Loop | Complete | ✅ | 100% |
+| Enemy Variety | 10 types | 🔄 | 30% |
+| Formation System | 5 behaviors | 🔄 | 10% |
+| Environmental System | Basic obstacles | 🔄 | 5% |
+| Weapon Systems | 4 patterns | 🔄 | 75% |
+| Save/Load System | Complete | ✅ | 100% |
+| Progression System | In Progress | 🔄 | 30% |
+| Level Structure | Not Started | ⏳ | 0% |
+| Audio Implementation | Not Started | ⏳ | 0% |
+| Visual Effects | Not Started | ⏳ | 0% |
+| Final Release | TBD | ⏳ | 0% | 

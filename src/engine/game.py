@@ -34,6 +34,9 @@ class Game:
         os.makedirs(self.save_dir, exist_ok=True)
         self.save_file = os.path.join(self.save_dir, "save_data.json")
 
+        # Flag to track if there's a saved game - set this BEFORE creating states
+        self.has_saved_game = os.path.exists(self.save_file)
+
         # Initialize display
         self.screen = pygame.display.set_mode((width, height))
         pygame.display.set_caption("Machines of God")
@@ -138,6 +141,7 @@ class Game:
             with open(self.save_file, "w") as f:
                 json.dump(save_data, f)
             print("Game saved successfully!")
+            self.has_saved_game = True
         except Exception as e:
             print(f"Error saving game: {e}")
 
@@ -145,6 +149,7 @@ class Game:
         """Load game progress from file."""
         if not os.path.exists(self.save_file):
             print("No save file found, starting new game")
+            self.has_saved_game = False
             return
 
         try:
@@ -159,5 +164,57 @@ class Game:
                 self.states["shop"].upgrades = save_data["upgrades"]
 
             print("Game loaded successfully!")
+            self.has_saved_game = True
         except Exception as e:
             print(f"Error loading game: {e}")
+            self.has_saved_game = False
+
+    def start_new_game(self):
+        """Start a new game by resetting save data."""
+        # Reset the playing state
+        self.states["playing"].total_stars_collected = 0
+
+        # Reset all upgrades
+        for key in self.states["shop"].upgrades:
+            self.states["shop"].upgrades[key]["level"] = 0
+
+        # Reset player stats
+        self.states["playing"].player.health = self.states["playing"].player.max_health
+        self.states["playing"].player.lives = 3
+        self.states["playing"].player.score = 0
+
+        # Apply upgrade resets to player
+        play_state = self.states["playing"]
+        shop_state = self.states["shop"]
+
+        # Reset player stats based on starting upgrade levels
+        play_state.player.max_health = shop_state.upgrades["hull"]["values"][0]
+        play_state.player.health = play_state.player.max_health
+
+        play_state.player.vert_speed = shop_state.upgrades["engine"]["values"][0]
+        play_state.player.lat_speed = shop_state.upgrades["thruster"]["values"][0]
+
+        play_state.player.primary_pattern = shop_state.upgrades["primary"]["patterns"][0]
+        play_state.player.primary_cooldown = 0.5
+
+        play_state.player.max_shield = shop_state.upgrades["shield"]["values"][0]
+        play_state.player.shield = play_state.player.max_shield
+        play_state.player.shield_recharge_rate = shop_state.upgrades["shield"]["recharge"][0]
+
+        play_state.player.secondary_level = shop_state.upgrades["secondary"]["level"]
+        play_state.player.missile_count = shop_state.upgrades["secondary"]["missiles"][0]
+        play_state.player.missile_cooldown = shop_state.upgrades["secondary"]["cooldown"][0]
+
+        play_state.player.magnet_radius = shop_state.upgrades["magnet"]["radius"][0]
+
+        # Delete save file
+        if os.path.exists(self.save_file):
+            try:
+                os.remove(self.save_file)
+                print("Save file deleted for new game")
+                self.has_saved_game = False
+            except Exception as e:
+                print(f"Error deleting save file: {e}")
+
+        # Change to playing state to start the game
+        self.change_state("playing")
