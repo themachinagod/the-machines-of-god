@@ -223,6 +223,9 @@ class Player(pygame.sprite.Sprite):
         # Rotation
         self.angle = 0  # Angle in degrees, 0 = up, increases clockwise
         self.rotation_speed = 180  # Degrees per second
+        self.return_to_center_speed = 90  # Speed at which angle returns to 0 when keys are released
+        self.rotation_pause_time = 0.8  # Seconds to wait before starting snap back
+        self.rotation_pause_timer = 0  # Timer to track pause duration
 
         # Health and lives
         self.max_health = 100
@@ -267,6 +270,62 @@ class Player(pygame.sprite.Sprite):
         # Currently implemented through direct setting in ShopState
         pass
 
+    def _handle_rotation(self, dt, keys):
+        """Handle ship rotation and auto-centering.
+
+        Args:
+            dt (float): Time elapsed since last update in seconds
+            keys (dict): Dictionary of pressed keys
+
+        Returns:
+            bool: True if the player is actively rotating, False otherwise
+        """
+        rotating = False
+        if keys[pygame.K_COMMA]:
+            self.angle = (self.angle - self.rotation_speed * dt) % 360
+            self._update_image()
+            rotating = True
+            # Reset pause timer when rotating
+            self.rotation_pause_timer = 0
+
+        if keys[pygame.K_PERIOD]:
+            self.angle = (self.angle + self.rotation_speed * dt) % 360
+            self._update_image()
+            rotating = True
+            # Reset pause timer when rotating
+            self.rotation_pause_timer = 0
+
+        # If not rotating and angle is not 0, handle return to center
+        if not rotating and self.angle != 0:
+            # Update pause timer
+            self.rotation_pause_timer += dt
+
+            # Only start returning to center after pause time has elapsed
+            if self.rotation_pause_timer >= self.rotation_pause_time:
+                # Find shortest direction back to 0
+                clockwise_distance = (360 - self.angle) % 360
+                counterclockwise_distance = self.angle
+
+                # Determine which direction is shorter
+                if clockwise_distance < counterclockwise_distance:
+                    # Rotate clockwise
+                    rotation_amount = min(self.return_to_center_speed * dt, clockwise_distance)
+                    self.angle = (self.angle + rotation_amount) % 360
+                else:
+                    # Rotate counter-clockwise
+                    rotation_amount = min(
+                        self.return_to_center_speed * dt, counterclockwise_distance
+                    )
+                    self.angle = (self.angle - rotation_amount) % 360
+
+                # Snap to exactly 0 if we're very close
+                if self.angle > 350 or self.angle < 10:
+                    self.angle = 0
+
+                self._update_image()
+
+        return rotating
+
     def update(self, dt, keys):
         """Update the player's position and state.
 
@@ -274,13 +333,8 @@ class Player(pygame.sprite.Sprite):
             dt (float): Time elapsed since last update in seconds
             keys (dict): Dictionary of pressed keys
         """
-        # Rotation controls
-        if keys[pygame.K_COMMA]:
-            self.angle = (self.angle - self.rotation_speed * dt) % 360
-            self._update_image()
-        if keys[pygame.K_PERIOD]:
-            self.angle = (self.angle + self.rotation_speed * dt) % 360
-            self._update_image()
+        # Handle rotation with auto-centering
+        self._handle_rotation(dt, keys)
 
         # Reset velocity
         self.velocity.x = 0
