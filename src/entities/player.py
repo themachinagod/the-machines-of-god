@@ -2,60 +2,90 @@
 Player class for Machines of God game.
 """
 
+import math
+
 import pygame
+
+# Define constants
+COLOR_PROJECTILE = (255, 255, 100)
 
 
 class PlayerProjectile(pygame.sprite.Sprite):
-    """Projectile fired by the player."""
+    """Player projectile class."""
 
-    def __init__(self, x, y, speed=-400, damage=1):
-        """Initialize a projectile.
+    def __init__(self, x, y, direction_x, direction_y, damage, is_missile, speed=500):
+        """Initialize player projectile.
 
         Args:
-            x (int): X position
-            y (int): Y position
-            speed (int): Speed in pixels per second
-                (negative for upward movement)
-            damage (int): Damage amount
+            x (int): X-coordinate
+            y (int): Y-coordinate
+            direction_x (float): X direction vector component
+            direction_y (float): Y direction vector component
+            damage (int): Damage the projectile deals
+            is_missile (bool): True if this is a missile
+            speed (int, optional): Speed of the projectile. Defaults to 500.
         """
         super().__init__()
-        self.image = pygame.Surface((8, 20), pygame.SRCALPHA)
+        self.image = pygame.Surface((4, 12))
+        self.image.fill(COLOR_PROJECTILE)
 
-        # Create a more visible laser effect
-        pygame.draw.line(self.image, (255, 255, 100), (4, 0), (4, 20), 4)
-        pygame.draw.line(self.image, (255, 255, 255), (4, 0), (4, 20), 2)
+        # For angled projectiles, adjust the image
+        if direction_x != 0:
+            # Rotate the image based on direction
+            angle = math.degrees(math.atan2(direction_y, direction_x)) - 90
+            self.image = pygame.transform.rotate(self.image, angle)
 
         self.rect = self.image.get_rect()
         self.rect.centerx = x
-        self.rect.bottom = y
-        self.velocity = pygame.math.Vector2(0, speed)
+        self.rect.centery = y
+
+        # Normalize the direction if needed
+        dir_length = math.sqrt(direction_x**2 + direction_y**2)
+        if dir_length > 0:
+            direction_x /= dir_length
+            direction_y /= dir_length
+
+        # Set velocity based on direction and speed
+        self.velocity = pygame.math.Vector2(direction_x * speed, direction_y * speed)
+
         self.damage = damage
+        self.is_missile = is_missile
 
     def update(self, dt):
         """Update projectile position.
 
         Args:
-            dt (float): Time elapsed since last update
+            dt (float): Time elapsed since last frame
         """
+        # Move the projectile
+        self.rect.x += self.velocity.x * dt
         self.rect.y += self.velocity.y * dt
 
         # Remove if off screen
-        if self.rect.bottom < 0:
+        screen_width, screen_height = pygame.display.get_surface().get_size()
+        if (
+            self.rect.bottom < 0
+            or self.rect.top > screen_height
+            or self.rect.right < 0
+            or self.rect.left > screen_width
+        ):
             self.kill()
 
 
 class PlayerMissile(pygame.sprite.Sprite):
     """Homing missile fired by player."""
 
-    def __init__(self, x, y, speed=-200, damage=5, target=None):
+    def __init__(self, x, y, direction_x, direction_y, damage=5, target=None, speed=400):
         """Initialize a missile.
 
         Args:
             x (int): X position
             y (int): Y position
-            speed (int): Speed in pixels per second
+            direction_x (float): X direction vector component
+            direction_y (float): Y direction vector component
             damage (int): Damage amount
             target (pygame.sprite.Sprite): Target to track
+            speed (int): Speed in pixels per second
         """
         super().__init__()
         self.image = pygame.Surface((10, 25), pygame.SRCALPHA)
@@ -67,13 +97,25 @@ class PlayerMissile(pygame.sprite.Sprite):
         # Draw missile exhaust
         pygame.draw.rect(self.image, (255, 120, 50), (4, 20, 2, 5))
 
+        # Rotate the image based on direction
+        if direction_x != 0 or direction_y != 0:
+            angle = math.degrees(math.atan2(direction_y, direction_x)) - 90
+            self.image = pygame.transform.rotate(self.image, angle)
+
         self.rect = self.image.get_rect()
         self.rect.centerx = x
-        self.rect.bottom = y
+        self.rect.centery = y
 
         self.position = pygame.math.Vector2(x, y)
-        self.velocity = pygame.math.Vector2(0, speed)
-        self.acceleration = pygame.math.Vector2(0, 0)
+
+        # Normalize the direction if needed
+        dir_length = math.sqrt(direction_x**2 + direction_y**2)
+        if dir_length > 0:
+            direction_x /= dir_length
+            direction_y /= dir_length
+
+        # Initial velocity in the direction specified
+        self.velocity = pygame.math.Vector2(direction_x * speed, direction_y * speed)
         self.max_speed = speed
         self.damage = damage
         self.target = target
@@ -102,18 +144,34 @@ class PlayerMissile(pygame.sprite.Sprite):
                     self.velocity.normalize_ip()
                     self.velocity *= abs(self.max_speed)
 
+                # Update missile rotation to match direction
+                angle = math.degrees(math.atan2(self.velocity.y, self.velocity.x)) - 90
+                self.image = pygame.transform.rotate(
+                    pygame.Surface((10, 25), pygame.SRCALPHA), angle
+                )
+
+                # Redraw missile on rotated surface
+                pygame.draw.rect(self.image, (100, 100, 100), (3, 5, 4, 15))
+                pygame.draw.polygon(self.image, (100, 100, 100), [(3, 5), (5, 0), (7, 5)])
+                pygame.draw.rect(self.image, (255, 120, 50), (4, 20, 2, 5))
+
+                # Update rect
+                old_center = self.rect.center
+                self.rect = self.image.get_rect()
+                self.rect.center = old_center
+
         # Update position
         self.position += self.velocity * dt
         self.rect.centerx = int(self.position.x)
         self.rect.centery = int(self.position.y)
 
         # Remove if off screen
-        screen_height = pygame.display.get_surface().get_size()[1]
+        screen_width, screen_height = pygame.display.get_surface().get_size()
         if (
             self.rect.bottom < 0
             or self.rect.top > screen_height
             or self.rect.right < 0
-            or self.rect.left > pygame.display.get_surface().get_size()[0]
+            or self.rect.left > screen_width
         ):
             self.kill()
 
@@ -125,57 +183,71 @@ class Player(pygame.sprite.Sprite):
         """Initialize the player.
 
         Args:
-            x (int): Initial x position
-            y (int): Initial y position
+            x (int): Initial x position.
+            y (int): Initial y position.
         """
         super().__init__()
 
-        # Create a placeholder sprite (will be replaced with an image later)
-        self.image = pygame.Surface((50, 50), pygame.SRCALPHA)
+        # Create a directional ship image
+        self.image = pygame.Surface([32, 32], pygame.SRCALPHA)
 
-        # Draw a better looking spaceship
-        # Main body
-        pygame.draw.polygon(self.image, (120, 180, 255), [(25, 0), (10, 40), (40, 40)])
-        # Wings
-        pygame.draw.polygon(self.image, (70, 130, 200), [(0, 50), (10, 40), (15, 50)])
-        pygame.draw.polygon(self.image, (70, 130, 200), [(50, 50), (40, 40), (35, 50)])
-        # Thrusters
-        pygame.draw.rect(self.image, (255, 150, 50), (20, 42, 10, 8))
+        # Draw a triangular ship pointing upward
+        ship_color = (0, 255, 255)  # Cyan color
 
-        # Get the rect for positioning
+        # Main body - triangle pointing up
+        pygame.draw.polygon(self.image, ship_color, [(16, 4), (4, 28), (28, 28)])
+
+        # Engine exhaust
+        pygame.draw.rect(self.image, (100, 100, 255), (12, 26, 8, 6))  # Blue exhaust
+
+        # Cockpit/canopy
+        pygame.draw.rect(self.image, (200, 255, 255), (14, 12, 4, 6))  # Light cyan
+
+        # Wing details
+        pygame.draw.line(self.image, (0, 200, 200), (4, 28), (16, 18), 2)
+        pygame.draw.line(self.image, (0, 200, 200), (28, 28), (16, 18), 2)
+
+        # Original image for rotation
+        self.original_image = self.image.copy()
+
+        # Player rect
         self.rect = self.image.get_rect()
         self.rect.centerx = x
         self.rect.centery = y
 
-        # Component upgrade levels
+        # Movement
+        self.velocity = pygame.math.Vector2(0, 0)
+        self.lat_speed = 150
+        self.vert_speed = 150
+
+        # Rotation
+        self.angle = 0  # Angle in degrees, 0 = up, increases clockwise
+        self.rotation_speed = 180  # Degrees per second
+
+        # Health and lives
+        self.max_health = 100
+        self.health = self.max_health
+        self.lives = 3
+
+        # Upgrades (all start at 0 = not unlocked)
         self.upgrades = {
-            "hull": 0,
-            "engine": 0,
-            "thruster": 0,
             "primary": 0,
-            "shield": 0,
             "secondary": 0,
+            "shield": 0,
             "magnet": 0,
         }
 
-        # Movement properties
-        self.vert_speed = 250  # Level 0 vertical speed
-        self.lat_speed = 250  # Level 0 lateral speed
-        self.velocity = pygame.math.Vector2(0, 0)
+        # Primary weapon (projectiles)
+        self.primary_level = 0  # Used to determine weapon pattern and damage
+        self.primary_damage = 1  # Base damage of projectiles
+        self.primary_cooldown = 0.5  # Time between shots
+        self.primary_last_shot = 0  # Time of last shot
+        self.primary_pattern = "single_slow"  # Current weapon pattern
 
-        # Health and shield properties
-        self.max_health = 50  # Level 0 health
-        self.health = self.max_health
-        self.max_shield = 0  # Level 0 shield
+        # Shield properties
+        self.max_shield = 0
         self.shield = 0
-        self.shield_recharge_rate = 0  # Points per second
-        self.lives = 3
-
-        # Weapon properties
-        self.primary_level = 0
-        self.primary_pattern = "single_slow"
-        self.primary_cooldown = 0.5  # seconds between shots
-        self.primary_last_shot = 0
+        self.shield_recharge_rate = 0
 
         # Secondary weapon (missiles)
         self.secondary_level = 0
@@ -202,19 +274,42 @@ class Player(pygame.sprite.Sprite):
             dt (float): Time elapsed since last update in seconds
             keys (dict): Dictionary of pressed keys
         """
+        # Rotation controls
+        if keys[pygame.K_COMMA]:
+            self.angle = (self.angle - self.rotation_speed * dt) % 360
+            self._update_image()
+        if keys[pygame.K_PERIOD]:
+            self.angle = (self.angle + self.rotation_speed * dt) % 360
+            self._update_image()
+
         # Reset velocity
         self.velocity.x = 0
         self.velocity.y = 0
 
+        # Calculate forward and sideways directions based on angle
+        # 0 degrees = up, 90 degrees = right, etc.
+        forward_x = math.sin(math.radians(self.angle))
+        forward_y = -math.cos(math.radians(self.angle))
+        right_x = math.sin(math.radians(self.angle + 90))
+        right_y = -math.cos(math.radians(self.angle + 90))
+
         # Movement controls - use appropriate speed values
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-            self.velocity.x = -self.lat_speed
-        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-            self.velocity.x = self.lat_speed
         if keys[pygame.K_UP] or keys[pygame.K_w]:
-            self.velocity.y = -self.vert_speed
+            # Move forward
+            self.velocity.x += forward_x * self.lat_speed
+            self.velocity.y += forward_y * self.vert_speed
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
-            self.velocity.y = self.vert_speed
+            # Move backward
+            self.velocity.x -= forward_x * self.lat_speed
+            self.velocity.y -= forward_y * self.vert_speed
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            # Strafe left
+            self.velocity.x -= right_x * self.lat_speed
+            self.velocity.y -= right_y * self.vert_speed
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            # Strafe right
+            self.velocity.x += right_x * self.lat_speed
+            self.velocity.y += right_y * self.vert_speed
 
         # Normalize diagonal movement to prevent faster diagonal speed
         if self.velocity.length() > 0:
@@ -243,74 +338,154 @@ class Player(pygame.sprite.Sprite):
         if self.shield < self.max_shield and self.shield_recharge_rate > 0:
             self.shield = min(self.max_shield, self.shield + self.shield_recharge_rate * dt)
 
+    def _update_image(self):
+        """Update the image based on the current angle."""
+        # Rotate the original image
+        self.image = pygame.transform.rotate(self.original_image, -self.angle)
+        # Keep the center position
+        center = self.rect.center
+        self.rect = self.image.get_rect()
+        self.rect.center = center
+
     def shoot(self, current_time, projectile_group):
-        """Create projectiles based on primary weapon level.
+        """Fire projectiles if the cooldown has elapsed.
 
         Args:
             current_time (float): Current game time in seconds
             projectile_group (pygame.sprite.Group): Group to add projectiles to
-
-        Returns:
-            bool: True if projectiles were created, False otherwise
         """
-        # Check cooldown
+        # Check if cooldown has elapsed
         if current_time - self.primary_last_shot < self.primary_cooldown:
-            return False
+            return False  # Still on cooldown
 
+        # Calculate projectile direction based on player angle
+        direction_x = math.sin(math.radians(self.angle))
+        direction_y = -math.cos(math.radians(self.angle))
+
+        # Update last shot time
         self.primary_last_shot = current_time
 
-        # Create projectiles based on weapon pattern
+        # Get the player position
+        x = self.rect.centerx
+        y = self.rect.centery
+
+        # Create projectiles based on pattern
         if self.primary_pattern == "single_slow":
-            # Single slow shot
-            bullet = PlayerProjectile(self.rect.centerx, self.rect.top)
-            projectile_group.add(bullet)
-        elif self.primary_pattern == "single_medium":
-            # Single medium rate shot
-            bullet = PlayerProjectile(self.rect.centerx, self.rect.top)
-            projectile_group.add(bullet)
-            # Faster cooldown handled by the shop
+            # Single projectile
+            projectile = PlayerProjectile(
+                x, y, direction_x, direction_y, self.primary_damage, False
+            )
+            projectile_group.add(projectile)
+
+        elif self.primary_pattern == "single_fast":
+            # Single faster projectile
+            projectile = PlayerProjectile(
+                x, y, direction_x, direction_y, self.primary_damage, False, speed=800
+            )
+            projectile_group.add(projectile)
+
         elif self.primary_pattern == "double":
-            # Double shot (side by side)
-            left = PlayerProjectile(self.rect.centerx - 10, self.rect.top)
-            right = PlayerProjectile(self.rect.centerx + 10, self.rect.top)
-            projectile_group.add(left, right)
+            # Two projectiles side by side
+            # Calculate offsets perpendicular to direction
+            perp_x = math.sin(math.radians(self.angle + 90))
+            perp_y = -math.cos(math.radians(self.angle + 90))
+
+            # Create two projectiles offset to either side
+            offset = 10  # Pixels
+            projectile1 = PlayerProjectile(
+                x + perp_x * offset,
+                y + perp_y * offset,
+                direction_x,
+                direction_y,
+                self.primary_damage,
+                False,
+            )
+            projectile2 = PlayerProjectile(
+                x - perp_x * offset,
+                y - perp_y * offset,
+                direction_x,
+                direction_y,
+                self.primary_damage,
+                False,
+            )
+            projectile_group.add(projectile1)
+            projectile_group.add(projectile2)
+
         elif self.primary_pattern == "triple":
-            # Triple shot (spread)
-            left = PlayerProjectile(self.rect.centerx - 15, self.rect.top)
-            left.velocity = pygame.math.Vector2(-50, left.velocity.y)
+            # Three projectiles in a spread
+            projectile1 = PlayerProjectile(
+                x, y, direction_x, direction_y, self.primary_damage, False
+            )
 
-            center = PlayerProjectile(self.rect.centerx, self.rect.top)
+            # Add angled projectiles (20 degrees to each side)
+            angle1 = self.angle - 20
+            angle2 = self.angle + 20
 
-            right = PlayerProjectile(self.rect.centerx + 15, self.rect.top)
-            right.velocity = pygame.math.Vector2(50, right.velocity.y)
+            dir1_x = math.sin(math.radians(angle1))
+            dir1_y = -math.cos(math.radians(angle1))
 
-            projectile_group.add(left, center, right)
+            dir2_x = math.sin(math.radians(angle2))
+            dir2_y = -math.cos(math.radians(angle2))
+
+            projectile2 = PlayerProjectile(x, y, dir1_x, dir1_y, self.primary_damage, False)
+            projectile3 = PlayerProjectile(x, y, dir2_x, dir2_y, self.primary_damage, False)
+
+            projectile_group.add(projectile1)
+            projectile_group.add(projectile2)
+            projectile_group.add(projectile3)
+
+        elif self.primary_pattern == "triple_narrow":
+            # Three projectiles in a narrower spread
+            projectile1 = PlayerProjectile(
+                x, y, direction_x, direction_y, self.primary_damage, False
+            )
+
+            # Add angled projectiles (10 degrees to each side)
+            angle1 = self.angle - 10
+            angle2 = self.angle + 10
+
+            dir1_x = math.sin(math.radians(angle1))
+            dir1_y = -math.cos(math.radians(angle1))
+
+            dir2_x = math.sin(math.radians(angle2))
+            dir2_y = -math.cos(math.radians(angle2))
+
+            projectile2 = PlayerProjectile(x, y, dir1_x, dir1_y, self.primary_damage, False)
+            projectile3 = PlayerProjectile(x, y, dir2_x, dir2_y, self.primary_damage, False)
+
+            projectile_group.add(projectile1)
+            projectile_group.add(projectile2)
+            projectile_group.add(projectile3)
+
         elif self.primary_pattern == "quad":
-            # Quad shot (2x2 pattern)
-            top_left = PlayerProjectile(self.rect.centerx - 10, self.rect.top)
-            top_right = PlayerProjectile(self.rect.centerx + 10, self.rect.top)
+            # Four projectiles
+            projectile1 = PlayerProjectile(
+                x, y, direction_x, direction_y, self.primary_damage, False
+            )
 
-            bottom_left = PlayerProjectile(self.rect.centerx - 10, self.rect.top + 15)
-            bottom_right = PlayerProjectile(self.rect.centerx + 10, self.rect.top + 15)
+            # Add angled projectiles (15 degrees to each side)
+            angle1 = self.angle - 15
+            angle2 = self.angle + 15
 
-            projectile_group.add(top_left, top_right, bottom_left, bottom_right)
-        elif self.primary_pattern == "five":
-            # Five shot (X pattern)
-            center = PlayerProjectile(self.rect.centerx, self.rect.top)
+            dir1_x = math.sin(math.radians(angle1))
+            dir1_y = -math.cos(math.radians(angle1))
 
-            top_left = PlayerProjectile(self.rect.centerx - 15, self.rect.top)
-            top_left.velocity = pygame.math.Vector2(-50, top_left.velocity.y)
+            dir2_x = math.sin(math.radians(angle2))
+            dir2_y = -math.cos(math.radians(angle2))
 
-            top_right = PlayerProjectile(self.rect.centerx + 15, self.rect.top)
-            top_right.velocity = pygame.math.Vector2(50, top_right.velocity.y)
+            # Add a fourth projectile slightly behind or offset
+            angle3 = self.angle - 180  # Behind
+            dir3_x = math.sin(math.radians(angle3))
+            dir3_y = -math.cos(math.radians(angle3))
 
-            far_left = PlayerProjectile(self.rect.centerx - 25, self.rect.top + 10)
-            far_left.velocity = pygame.math.Vector2(-100, far_left.velocity.y)
+            projectile2 = PlayerProjectile(x, y, dir1_x, dir1_y, self.primary_damage, False)
+            projectile3 = PlayerProjectile(x, y, dir2_x, dir2_y, self.primary_damage, False)
+            projectile4 = PlayerProjectile(x, y, dir3_x, dir3_y, self.primary_damage, False)
 
-            far_right = PlayerProjectile(self.rect.centerx + 25, self.rect.top + 10)
-            far_right.velocity = pygame.math.Vector2(100, far_right.velocity.y)
-
-            projectile_group.add(center, top_left, top_right, far_left, far_right)
+            projectile_group.add(projectile1)
+            projectile_group.add(projectile2)
+            projectile_group.add(projectile3)
+            projectile_group.add(projectile4)
 
         return True
 
@@ -334,16 +509,49 @@ class Player(pygame.sprite.Sprite):
             return False
 
         self.missile_last_shot = current_time
+        self.missile_count -= 1  # Use one missile
+
+        # Calculate missile direction based on player angle
+        direction_x = math.sin(math.radians(self.angle))
+        direction_y = -math.cos(math.radians(self.angle))
 
         # Fire missiles based on level
         if self.secondary_level == 1:
             # Single missile
-            missile = PlayerMissile(self.rect.centerx, self.rect.top, target=target)
+            missile = PlayerMissile(
+                self.rect.centerx,
+                self.rect.centery,
+                direction_x,
+                direction_y,
+                damage=5,
+                target=target,
+            )
             missile_group.add(missile)
         else:  # Level 2 or 3
-            # Dual missiles
-            left = PlayerMissile(self.rect.centerx - 15, self.rect.top, target=target)
-            right = PlayerMissile(self.rect.centerx + 15, self.rect.top, target=target)
+            # Calculate perpendicular offset
+            perp_x = math.sin(math.radians(self.angle + 90))
+            perp_y = -math.cos(math.radians(self.angle + 90))
+
+            # Offset amount
+            offset = 15
+
+            # Dual missiles, offset to each side
+            left = PlayerMissile(
+                self.rect.centerx + perp_x * offset,
+                self.rect.centery + perp_y * offset,
+                direction_x,
+                direction_y,
+                damage=5,
+                target=target,
+            )
+            right = PlayerMissile(
+                self.rect.centerx - perp_x * offset,
+                self.rect.centery - perp_y * offset,
+                direction_x,
+                direction_y,
+                damage=5,
+                target=target,
+            )
             missile_group.add(left, right)
 
         return True
