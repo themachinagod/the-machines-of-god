@@ -1,0 +1,38 @@
+{
+    "video": {
+        "width": 1280,
+        "height": 720,
+        "fullscreen": false,
+        "vsync": true,
+        "fps_limit": 60
+    },
+    "audio": {
+        "music_volume": 0.7,
+        "sfx_volume": 1.0,
+        "mute": false
+    },
+    "controls": {
+        "keyboard": {
+            "move_up": "w",
+            "move_down": "s",
+            "move_left": "a",
+            "move_right": "d",
+            "shoot": "space",
+            "special1": "z",
+            "special2": "x",
+            "pause": "p"
+        },
+        "gamepad": {
+            "enabled": true
+        }
+    },
+    "gameplay": {
+        "difficulty": "normal",
+        "player_lives": 3,
+        "starting_level": 1
+    },
+    "display": {
+        "show_fps": true,
+        "show_hitboxes": false
+    }
+} 

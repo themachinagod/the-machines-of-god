@@ -1,0 +1,113 @@
+{
+    "level": {
+        "id": 1,
+        "name": "First Contact",
+        "background": "bg_space.png",
+        "music": "level1.ogg",
+        "scroll_speed": 100,
+        "time_limit": 180,
+        "objectives": [
+            {
+                "type": "destroy_enemies",
+                "count": 30,
+                "required": true
+            },
+            {
+                "type": "collect_stars",
+                "count": 5,
+                "required": false
+            },
+            {
+                "type": "no_damage",
+                "required": false
+            }
+        ]
+    },
+    "waves": [
+        {
+            "time": 2,
+            "enemies": [
+                {
+                    "type": "basic",
+                    "count": 5,
+                    "formation": "line",
+                    "x": 200,
+                    "y": -50,
+                    "spacing": 100
+                }
+            ]
+        },
+        {
+            "time": 10,
+            "enemies": [
+                {
+                    "type": "zigzag",
+                    "count": 3,
+                    "formation": "v",
+                    "x": 640,
+                    "y": -50,
+                    "spacing": 80
+                }
+            ]
+        },
+        {
+            "time": 20,
+            "enemies": [
+                {
+                    "type": "shooter",
+                    "count": 2,
+                    "formation": "line",
+                    "x": 400,
+                    "y": -50,
+                    "spacing": 300
+                }
+            ]
+        },
+        {
+            "time": 30,
+            "enemies": [
+                {
+                    "type": "basic",
+                    "count": 10,
+                    "formation": "line",
+                    "x": 100,
+                    "y": -50,
+                    "spacing": 100
+                }
+            ]
+        },
+        {
+            "time": 60,
+            "enemies": [
+                {
+                    "type": "boss",
+                    "count": 1,
+                    "formation": "single",
+                    "x": 640,
+                    "y": -100,
+                    "spacing": 0
+                }
+            ]
+        }
+    ],
+    "powerups": [
+        {
+            "type": "weapon",
+            "x": 300,
+            "y": -800,
+            "time": 15
+        },
+        {
+            "type": "shield",
+            "x": 600,
+            "y": -1500,
+            "time": 40
+        },
+        {
+            "type": "life",
+            "x": 900,
+            "y": -2000,
+            "time": 70
+        }
+    ]
+} 
