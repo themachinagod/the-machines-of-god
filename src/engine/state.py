@@ -398,15 +398,62 @@ class ShopState(State):
             if event.key == pygame.K_ESCAPE or event.key == pygame.K_b:
                 # Return to menu
                 self.game.change_state("menu")
+            elif event.key == pygame.K_RETURN or event.key == pygame.K_n or event.key == pygame.K_c:
+                # Continue to next level
+                self._continue_to_next_level()
             elif event.key == pygame.K_UP:
                 # Navigate up
                 self.selected_index = (self.selected_index - 1) % len(self.upgrade_keys)
             elif event.key == pygame.K_DOWN:
                 # Navigate down
                 self.selected_index = (self.selected_index + 1) % len(self.upgrade_keys)
-            elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+            elif event.key == pygame.K_SPACE:
                 # Purchase upgrade
                 self._purchase_upgrade()
+
+    def _continue_to_next_level(self):
+        """Progress to the next level after shopping."""
+        # Make sure we have the playing state
+        if "playing" not in self.game.states:
+            self.game.change_state("menu")
+            return
+
+        # Get reference to playing state
+        play_state = self.game.states["playing"]
+
+        # Increment level
+        play_state.current_level += 1
+
+        # Reset level timers and completion flags
+        play_state.level_time = 0
+        play_state.wave_timer = 0
+        play_state.wave_index = 0
+        play_state.level_complete = False
+        play_state.completion_timer = 0
+
+        # Increase difficulty for next level (more enemies, faster spawns)
+        self._scale_difficulty(play_state)
+
+        # Return to playing state with next level
+        self.game.change_state("playing")
+
+    def _scale_difficulty(self, play_state):
+        """Scale difficulty based on current level."""
+        # Increase level duration slightly for higher levels
+        play_state.level_duration = 90 + (play_state.current_level - 1) * 15
+
+        # Scale enemy spawn rates and counts
+        for wave in play_state.waves:
+            for enemy_def in wave["enemies"]:
+                # Increase enemy count based on level (careful not to overwhelm)
+                base_count = enemy_def["count"]
+                enemy_def["count"] = min(base_count + play_state.current_level // 2, base_count * 3)
+
+                # Decrease spawn interval for faster action
+                base_interval = enemy_def["interval"]
+                enemy_def["interval"] = max(
+                    base_interval * 0.8 ** (play_state.current_level - 1), 0.5
+                )
 
     def _purchase_upgrade(self):
         """Attempt to purchase the selected upgrade."""
@@ -488,10 +535,24 @@ class ShopState(State):
 
         # Draw instructions
         inst_text = self.desc_font.render(
-            "Use UP/DOWN to select, SPACE to purchase, ESC to exit", True, (180, 180, 180)
+            "Use UP/DOWN to select, SPACE to purchase, ENTER to continue, ESC to exit",
+            True,
+            (180, 180, 180),
         )
         inst_rect = inst_text.get_rect(center=(self.game.width // 2, self.game.height - 30))
         screen.blit(inst_text, inst_rect)
+
+        # Show current/next level info
+        level_info = "Press ENTER to continue to"
+        if "playing" in self.game.states:
+            play_state = self.game.states["playing"]
+            level_info += f" Level {play_state.current_level + 1}"
+        else:
+            level_info += " next level"
+
+        level_text = self.item_font.render(level_info, True, (100, 255, 100))
+        level_rect = level_text.get_rect(center=(self.game.width // 2, self.game.height - 60))
+        screen.blit(level_text, level_rect)
 
         # Draw upgrade items
         y_start = 150
@@ -559,6 +620,9 @@ class PlayingState(State):
             game: Reference to the main game object
         """
         super().__init__(game)
+
+        # Initialize font for UI
+        self.font = pygame.font.Font(None, 24)
 
         # Initialize sprite groups
         self.all_sprites = pygame.sprite.Group()
@@ -650,6 +714,28 @@ class PlayingState(State):
 
     def enter(self):
         """Called when entering the playing state."""
+        # Store player attributes if they exist and we're continuing a game
+        player_attributes = {}
+        if hasattr(self, "player") and self.player:
+            # Save important player attributes
+            player_attributes = {
+                "max_health": self.player.max_health,
+                "health": self.player.health,
+                "max_shield": self.player.max_shield,
+                "shield": self.player.shield,
+                "shield_recharge_rate": self.player.shield_recharge_rate,
+                "vert_speed": self.player.vert_speed,
+                "lat_speed": self.player.lat_speed,
+                "primary_level": self.player.primary_level,
+                "primary_pattern": self.player.primary_pattern,
+                "secondary_level": self.player.secondary_level,
+                "missile_count": self.player.missile_count,
+                "missile_cooldown": self.player.missile_cooldown,
+                "magnet_radius": self.player.magnet_radius,
+                "score": self.player.score,
+                "lives": self.player.lives,
+            }
+
         # Reset player position if needed
         self.player.rect.centerx = self.game.width // 2
         self.player.rect.bottom = self.game.height - 50
@@ -666,7 +752,7 @@ class PlayingState(State):
         self.enemy_projectiles.empty()
         self.collectibles.empty()
 
-        # Reset level data
+        # Reset level data for current level
         self.level_time = 0
         self.wave_timer = 0
         self.wave_index = 0
@@ -674,8 +760,12 @@ class PlayingState(State):
         self.completion_timer = 0
         self.enemy_spawn_timers = {}
 
-        # Ensure player has appropriate starting stats
-        if self.player.health <= 0:
+        # Restore player attributes if we had any
+        if player_attributes:
+            for attr, value in player_attributes.items():
+                setattr(self.player, attr, value)
+        # Else ensure player has appropriate starting stats if new game
+        elif self.player.health <= 0:
             self.player.health = self.player.max_health
             self.player.lives = 3
             self.player.score = 0
@@ -779,9 +869,10 @@ class PlayingState(State):
         if self.level_complete:
             self.completion_timer += dt
             if self.completion_timer >= self.completion_delay:
-                # Go back to menu for now
-                self.game.change_state("menu")
-                # Future: Show level summary, go to next level, etc.
+                # Save current game state for persistence
+                self._save_game_state()
+                # Go to shop after completing level
+                self.game.change_state("shop")
                 return
 
         # Update wave timing
@@ -797,6 +888,15 @@ class PlayingState(State):
 
         # Handle enemy spawning based on current wave
         self._process_wave_spawns(dt)
+
+    def _save_game_state(self):
+        """Save the current game state for level progression."""
+        # Ensure we have a reference to game to save state
+        if hasattr(self.game, "_save_game_data"):
+            self.game._save_game_data()
+
+        # Mark game as having saved data
+        self.game.has_saved_game = True
 
     def _update_player_and_weapons(self, dt):
         """Update player and weapon systems.
