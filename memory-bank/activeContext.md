@@ -294,33 +294,61 @@ class Player:
 
 ### Technical Architecture
 
-1. **Entity Component System**
-   - Component-based architecture for flexible entity creation
-   - Health, collision, weapon, movement, AI components
-   - Entity manager for efficient updates and rendering
+The game follows a state-based architecture that will be expanded with these key components:
 
-2. **Rendering Pipeline**
-   - Multi-layered background with parallax scrolling
-   - Particle effects system for explosions, engines, weapons
-   - Dynamic lighting effects
-   - Screen shake and other visual feedback
+1. **Core Engine**
+   - Main game loop
+   - State management
+   - Save/load system
+   - Input handling
 
-3. **Audio System**
-   - Dynamic music that adapts to gameplay intensity
-   - Comprehensive sound effects for feedback
+2. **Enhanced Entity System**
+   - Component-based entity architecture
+   - Formation management system
+   - Procedural enemy generation
+   - Path following algorithms
+   - Flocking and group behavior system
+   - Advanced collision detection with hitboxes
+
+3. **Visual Systems**
+   - Sprite animation system
+   - Particle effect manager
+   - Dynamic lighting system
+   - Screen effects manager (shake, flash, etc.)
+   - Weather and environmental effects
+
+4. **Audio Framework**
+   - Sound effect manager with spatial audio
+   - Dynamic music system with intensity layers
+   - Voice system for narrative elements
    - Audio mixing and prioritization
 
-4. **Save System**
-   - Persistent player progression
-   - Unlocked levels and achievements
-   - Purchased upgrades
-   - High scores and statistics
+5. **Player System**
+   - Expanded upgrade management
+   - Resource tracking and visualization
+   - Special ability cooldown system
+   - Combo tracking and rewards
+   - Specialization path progression
 
-5. **UI Framework**
-   - Main menu, level select, upgrade shop interfaces
-   - In-game HUD with health, score, objectives
-   - Pause menu with options
-   - Post-mission results screen
+6. **Game Flow**
+   - Story progression system
+   - Mission objective tracker
+   - Achievement system
+   - Dynamic difficulty scaling
+   - Leaderboard integration
+
+7. **UI Framework**
+   - Minimalist HUD with dynamic elements
+   - Menu system with animations
+   - Notification system
+   - Tutorial framework
+   - Accessibility options
+
+8. **Resource System**
+   - Multi-currency economy
+   - Collectible manager
+   - Pickup generation and placement
+   - Combo and multiplier tracking
 
 ### Implementation Phases
 
@@ -508,4 +536,168 @@ The first prototype should demonstrate:
 - Basic enemy patterns
 - Simple shooting mechanics
 
-This will validate the core gameplay feel and technical approach before expanding to more complex features. 
+This will validate the core gameplay feel and technical approach before expanding to more complex features.
+
+## Game Enhancement Plan
+
+### Enemy System Expansion
+1. **Dynamic Enemy Formations**
+   - Swarm behaviors with coordinated movement patterns
+   - Geometric formations (V-shaped, circular, grid patterns)
+   - Dynamic reforming after partial destruction
+   - Flying in from multiple screen edges
+
+2. **Enhanced Enemy Variety**
+   - Variable stats for each enemy instance (health, speed, damage)
+   - Procedurally generated appearance variations
+   - Multiple attack patterns per enemy type
+   - Specialized roles within formations (tanks, snipers, support)
+
+3. **Advanced Enemy Behaviors**
+   - Evasive maneuvers when targeted
+   - Retreat and regroup behaviors
+   - Shield-bearing enemies that protect others
+   - Multi-stage enemies that transform when damaged
+   - Environmental manipulation (leaving debris, smoke screens)
+
+4. **Complex Movement Patterns**
+   - Bezier curve path following
+   - Screen-wrapping behaviors
+   - Orbital patterns around anchor points
+   - Flocking behaviors with separation, alignment, cohesion
+   - Pursuit and interception algorithms
+
+5. **Varied Attack Patterns**
+   - Multi-directional firing
+   - Charging attacks with visual indicators
+   - Area-of-effect attacks
+   - Status effect projectiles (slowing, disabling weapons)
+   - Pattern-based bullet hell sequences
+
+### Upgrade System Revamp
+1. **Trade-off Upgrades**
+   - Speed vs. maneuverability
+   - Fire rate vs. damage
+   - Shield capacity vs. recharge rate
+   - Weapon spread vs. projectile speed
+
+2. **Specialization Paths**
+   - Distinct upgrade trees (Tank, Glass Cannon, Support)
+   - Branch-specific unique abilities
+   - Path-dependent visual ship changes
+
+3. **Temporary Boosters**
+   - Time-limited power increases
+   - Cooldown-based special abilities
+   - Charge-based ultimate attacks
+
+4. **Synergy Bonuses**
+   - Complementary upgrade combinations
+   - Set bonuses for themed upgrades
+   - Escalating returns for specialization
+
+5. **Dynamic Difficulty Adjustment**
+   - Upgrade suggestions based on player performance
+   - Enemy scaling based on player power level
+   - Adaptive challenge mechanics
+
+### Player Mechanics Enhancements
+1. **Resource Management**
+   - Thruster fuel with regeneration
+   - Overheating mechanics for rapid firing
+   - Energy allocation between systems
+   - Consumable items with strategic usage
+
+2. **Special Maneuvers**
+   - Barrel roll with temporary invincibility
+   - Quick dash/boost with cooldown
+   - Weapon overcharge with risk/reward
+   - Screen-clearing bomb with limited uses
+
+3. **Expanded Control Schemes**
+   - Controller support with analog movement
+   - Alternative keyboard layouts
+   - Customizable controls
+   - Accessibility options
+
+4. **Combat Mechanics**
+   - Combo systems for sequential hits
+   - Critical hit mechanics
+   - Weakpoint targeting
+   - Counter-attack opportunities
+
+### Visual and Feedback Improvements
+1. **Graphical Enhancements**
+   - Sprite-based entities with animations
+   - Particle effect system for impacts and explosions
+   - Dynamic lighting for weapons and engines
+   - Screen shake for impactful moments
+   - Weather and environmental effects
+
+2. **Audio Feedback**
+   - Comprehensive sound effect library
+   - Dynamic music system that responds to intensity
+   - Spatial audio for positional awareness
+   - Voice cues for important events
+
+3. **Visual Communication**
+   - Clear hit feedback and damage numbers
+   - Threat indicators for off-screen enemies
+   - Visual cues for power-up effects
+   - Health/shield visualization on both player and enemies
+
+4. **UI Improvements**
+   - Minimalist HUD with critical info only
+   - Animated transitions between states
+   - Dynamic radar/minimap
+   - Achievement notifications
+
+### Game Modes and Progression
+1. **Story Mode**
+   - Narrative-driven campaign
+   - Character development and dialogue
+   - Cutscenes for major story beats
+   - Meaningful choices affecting gameplay
+
+2. **Arcade Mode**
+   - Endless waves with increasing difficulty
+   - Global leaderboards
+   - Daily/weekly challenges
+   - Consistent enemy patterns for fair scoring
+
+3. **Challenge Mode**
+   - Specialized missions with unique constraints
+   - Time trials and survival challenges
+   - Boss rush mode
+   - Restricted loadout challenges
+
+4. **Progression Systems**
+   - Pilot level/rank with persistent bonuses
+   - Ship unlock system with unique characteristics
+   - Achievement system with gameplay rewards
+   - Collection mechanics for rare items
+
+### Collectible and Resource System
+1. **Enhanced Star System**
+   - Variable star values with rarity tiers
+   - Star burst patterns from destroyed enemies
+   - Combo multipliers for consecutive collections
+   - Special formation stars with bonus effects
+
+2. **Diverse Pickups**
+   - Temporary weapon modifications
+   - Shield overcharge items
+   - Score multipliers
+   - Special ability recharges
+
+3. **Resource Economy**
+   - Multiple currency types for different upgrades
+   - Material gathering for ship customization
+   - Rare resources from elite enemies
+   - Conversion system between resource types
+
+4. **Collection Mechanics**
+   - Risk/reward positioning for valuable pickups
+   - Timed collection challenges
+   - Chain reaction collections
+   - Magnetic radius customization 
