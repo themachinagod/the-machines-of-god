@@ -13,6 +13,19 @@
 - Set up the core game loop and state system
 - Added initial collectible system with stars
 - Implemented basic shop interface
+- Added save game functionality for persistence of upgrades and stars
+- Implemented missile system with homing capabilities
+- Added enemy variety with different behaviors and stats
+- Added "Resume Game" and "New Game" options to main menu
+- Implemented enemy variance with difficulty scaling and random stat adjustments
+- Added directional player movement with ship rotation using comma/period keys
+- Implemented directional firing system that matches the ship's orientation
+- Created visually distinct ship with clear directional indicators
+- Added automatic snap-back-to-center with pause timer for improved control feel
+- Refactored complex game logic to improve code maintainability
+- Added complete missile guidance system with proper targeting
+- Fixed missile and projectile collision detection and response
+- Improved weapon pattern implementations (single, double, triple, quad)
 
 ## Upgrade System Requirements
 
@@ -201,25 +214,25 @@ class Player:
 
 ## Implementation Priorities
 
-1. **Phase 1: Core Component System**
-   - Refactor Player class to support component system
-   - Implement proper upgrade effects
-   - Balance starting attributes
+1. **Phase 1: Core Component System** ✓
+   - Refactor Player class to support component system ✓
+   - Implement proper upgrade effects ✓
+   - Balance starting attributes ✓
 
-2. **Phase 2: Enemy Variety**
-   - Implement all enemy types
-   - Create spawn patterns
-   - Balance difficulty
+2. **Phase 2: Enemy Variety** ✓
+   - Implement all enemy types ✓
+   - Create spawn patterns ✓
+   - Balance difficulty ⚠️ (In progress)
 
 3. **Phase 3: Level Structure**
-   - Design proper level flow
+   - Design proper level flow ⚠️ (In progress)
    - Implement boss encounters
    - Add level selection
 
 4. **Phase 4: Polish**
    - Improved visual effects
    - Sound effects and music
-   - Menu and UI improvements
+   - Menu and UI improvements ⚠️ (In progress)
 
 ## Development Environment
 
@@ -342,46 +355,85 @@ class Player:
 ## Next Steps
 
 ### Immediate Tasks (Current Sprint)
-1. Create proper upgrade system architecture
-2. Implement star collection and persistence
-3. Develop the upgrade shop interface
-4. Add multiple weapon types with different behaviors
-5. Enhance enemy variety with at least 3 distinct types
+1. Finalize missile collision detection fix
+2. Complete "Resume Game" and "New Game" functionality testing
+3. Implement boss enemy encounter for end of level
+4. Enhance visual effects for collisions, explosions, and weapons
+5. Add sound effects for actions and background music
+6. Refine upgrade balance based on testing
 
-## Development Environment
+### Planned Tasks (Next Sprint)
+1. Add multiple levels with increasing difficulty
+2. Implement proper game completion screen
+3. Add achievement system for gameplay rewards
+4. Enhance visual polish with improved sprites and animations
+5. Implement difficulty settings
 
-- Python 3.12
-- Poetry for package and environment management
-- Pygame 2.6.1
-- Entity Component System architecture
-- State machine for game flow management
+## Technical Architecture
 
-## Current Development Focus
-- Building core game engine components
-- Implementing entity component system
-- Refining visual rendering pipeline
-- Establishing game world physics
+The game now follows a state-based architecture with the following key components:
 
-## Recent Developments
-- Switched to Poetry for package management and virtual environments
-- Updated Pygame from version 2.1.0 to 2.6.1
-- Added Black formatter (version 23.9.0) for consistent code styling
-- Added isort (version 5.12.0) for organizing import statements
-- Implemented basic entity component system architecture
-- Added type annotations and mypy type checking
-- Set up Ruff linter configuration
-- Created initial project structure with Poetry for package management
+1. **Game Engine**
+   - Main game loop
+   - State management
+   - Save/load system
+   - Input handling
 
-## Immediate Next Steps
-- Complete physics engine integration
-- Finalize character movement mechanics
-- Implement inventory system
-- Expand game world generation logic
+2. **Game States**
+   - Menu State (with resume/new game options)
+   - Playing State (core gameplay)
+   - Shop State (upgrade system)
 
-## Known Issues
-- Some graphics rendering is inefficient and needs optimization
-- Collision detection system needs refinement
-- Asset loading system is not properly cached
+3. **Entity System**
+   - Player with upgradable components
+   - Multiple enemy types with varied behaviors
+   - Projectiles and homing missiles
+   - Collectibles for resources
+
+4. **Save System**
+   - JSON-based save file for game progress
+   - Stores upgrade levels and collected stars
+   - Supports separate new game and resume functionality
+
+The current implementation provides a solid foundation for future expansion while maintaining good separation of concerns between the different game components.
+
+## Current Status & Progress
+
+### Completed Features
+- Player movement and shooting mechanics
+- Basic enemy spawning system
+- Collision detection and damage systems
+- Scrolling background with parallax effect
+- HUD display with player stats
+- Shop system for purchasing upgrades
+- Save/load system for game progress
+- Multiple weapon types based on upgrades
+- Enemy variety with different behaviors
+- Collectible items (stars, health, shields)
+- Missile system with target tracking
+- Menu system with game flow control
+- Enemy difficulty scaling and variance
+- Directional movement with rotation controls
+- Auto-centering ship rotation with pause timer
+- Visually distinct ship with directional indicators
+- Multiple projectile patterns with directional firing
+- Component-based upgrade system
+- Wave-based enemy spawning system
+- Progressive shop pricing model
+- Full save/resume game functionality
+
+### In Progress Features
+- Further enemy variety with boss encounters
+- Level progression system
+- Additional weapon types and powerups
+- Visual effects improvements
+
+### Known Issues
+- Missiles should disappear on contact with enemies (fixed)
+- Game shows previous upgrades in shop but they aren't applied correctly after restart (fixed with new game/resume system)
+- Need more visual feedback for damage and collisions
+- Enemy spawn patterns need further refinement
+- Game difficulty progression needs balancing
 
 ## Current Focus
 
