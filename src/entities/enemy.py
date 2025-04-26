@@ -31,7 +31,7 @@ class Enemy(pygame.sprite.Sprite):
         self.difficulty = difficulty
 
         # Base stats
-        self.base_health = 20
+        self.base_health = 20  # Keep at 20 for appropriate challenge
         self.base_speed = 120
         self.movement_type = "linear"  # Default movement type
 

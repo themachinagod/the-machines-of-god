@@ -71,9 +71,18 @@
   - 🔄 Energy barriers
   - 🔄 Gravity wells
 - 🔄 Balance adjustment for enemy attributes
+  - ✅ Base enemy health maintained at 20 for appropriate challenge
+  - ✅ Increased base enemy speed from 60 to 120 pixels per second
+  - ✅ Adjusted speed ratios between enemy types for better gameplay pacing
+  - 🔄 Further enemy attribute refinement
 - 🔄 Collision detection refinement
 - 🔄 Missile behavior and tracking improvements
 - 🔄 Visual feedback enhancements
+- 🔄 PowerUp system enhancement
+  - 🔄 Create PowerUp collectible class extending base Collectible
+  - 🔄 Update CollectibleManager to spawn PowerUps
+  - 🔄 Implement different PowerUp types (weapon, shield, speed, life)
+  - 🔄 Add visual effects for active powerups
 
 ### Pending
 - ⏳ Advanced enemy types (PulsarEnemy, MineLayer, etc.)
@@ -126,6 +135,7 @@
    - Add simple asteroid obstacles
    - Improve missile tracking and collision behavior
    - Add visual feedback for player actions
+   - Create PowerUp class and integrate with collectible system
 
 2. **Medium Term (3-4 weeks)**
    - Complete remaining enemy types (at least 10 total)
@@ -134,6 +144,7 @@
    - Implement permanent upgrade system
    - Begin audio implementation
    - Add basic particle effects
+   - Complete PowerUp system with multiple powerup types
 
 3. **Long Term (1-2 months)**
    - Complete level structure
@@ -153,6 +164,7 @@
 | Weapon Systems | 4 patterns | 🔄 | 75% |
 | Save/Load System | Complete | ✅ | 100% |
 | Progression System | In Progress | 🔄 | 30% |
+| PowerUp System | In Progress | 🔄 | 15% |
 | Level Structure | Not Started | ⏳ | 0% |
 | Audio Implementation | Not Started | ⏳ | 0% |
 | Visual Effects | Not Started | ⏳ | 0% |

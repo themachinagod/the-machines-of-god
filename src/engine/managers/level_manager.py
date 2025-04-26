@@ -43,7 +43,7 @@ class LevelManager:
             self.level_complete = True
             state_changed = True
             print(f"Level {self.current_level} complete!")
-            
+
             # Return True to indicate level is complete, but don't transition states
             # Let the playing state handle showing the summary and transitioning
             return True

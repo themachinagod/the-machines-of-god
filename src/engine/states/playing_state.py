@@ -10,6 +10,7 @@ from engine.managers.enemy_manager import EnemyManager
 from engine.managers.level_manager import LevelManager
 from engine.managers.ui_manager import UIManager
 from engine.visual import ParallaxBackground
+from entities.collectible import Star
 from entities.player import Player
 
 from .base_state import State
@@ -121,7 +122,7 @@ class PlayingState(State):
 
         # Game progression data
         self.total_stars_collected = 0
-        
+
         # Statistics tracking
         self.stats = {
             "enemies_killed": 0,
@@ -134,7 +135,7 @@ class PlayingState(State):
             "collection_rate": 0,
             "kill_rate": 0,
         }
-        
+
         # Level scoring
         self.base_score = 0
         self.level_score = 0
@@ -156,7 +157,7 @@ class PlayingState(State):
 
         # Create collision manager
         self.collision_manager = CollisionManager(self.sprite_groups, self.collectible_manager)
-        
+
         # Set the stats reference in collision manager
         self.collision_manager.set_stats_reference(self.stats)
 
@@ -195,25 +196,25 @@ class PlayingState(State):
             print(f"DEBUG - Player primary_level: {self.player.primary_level}")
             print(f"DEBUG - Player primary_cooldown: {self.player.primary_cooldown}")
             print(f"DEBUG - Player object ID: {id(self.player)}")
-            
+
             # Ensure primary pattern is valid
-            if not hasattr(self.player, 'primary_pattern') or self.player.primary_pattern is None:
+            if not hasattr(self.player, "primary_pattern") or self.player.primary_pattern is None:
                 print("WARNING: primary_pattern is None, setting to default 'single_slow'")
                 self.player.primary_pattern = "single_slow"
-                
+
             # Check for upgrades dictionary
             shop_state = self.game.states.get("shop")
             if shop_state:
-                print(f"DEBUG - Shop upgrades - primary level: {shop_state.upgrades['primary']['level']}")
-                primary_patterns = shop_state.upgrades['primary']['patterns']
-                primary_level = shop_state.upgrades['primary']['level']
+                print(f"DEBUG - Shop primary level: {shop_state.upgrades['primary']['level']}")
+                primary_patterns = shop_state.upgrades["primary"]["patterns"]
+                primary_level = shop_state.upgrades["primary"]["level"]
                 print(f"DEBUG - Available patterns: {primary_patterns}")
-                
+
                 # Verify primary pattern is correctly set
                 if 0 <= primary_level < len(primary_patterns):
                     expected_pattern = primary_patterns[primary_level]
                     print(f"DEBUG - Expected pattern: '{expected_pattern}'")
-                    
+
                     # Fix if there's a mismatch
                     if self.player.primary_pattern != expected_pattern:
                         print(f"FIXING: Pattern mismatch! Setting to {expected_pattern}")
@@ -261,14 +262,14 @@ class PlayingState(State):
         self.level_time = 0
         self.level_complete = False
         self.completion_timer = 0
-        
+
         # Keep persistent stats across levels, but reset for new game
         if not player_attributes and (self.player.health <= 0 or self.current_level == 1):
             # Reset stats for new game
             self.stats = {
                 "enemies_killed": 0,
                 "enemies_escaped": 0,
-                "stars_collected": 0, 
+                "stars_collected": 0,
                 "stars_missed": 0,
                 "shots_fired": 0,
                 "shots_hit": 0,
@@ -305,7 +306,7 @@ class PlayingState(State):
             # Go to shop after showing summary
             self.game.change_state("shop")
             return
-            
+
         # Handle pause
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_p:
@@ -360,7 +361,7 @@ class PlayingState(State):
         """
         # Update game time
         self.game_time += dt
-        
+
         # If showing level summary, handle the timer and transition
         if self.showing_level_summary:
             self.summary_timer += dt
@@ -375,7 +376,7 @@ class PlayingState(State):
 
         # Handle level timing and completion
         level_changed = self.level_manager.update(dt)
-        
+
         # If level is complete, calculate final score and show summary
         if level_changed and self.level_manager.is_level_complete():
             self._calculate_level_score()
@@ -393,7 +394,7 @@ class PlayingState(State):
 
         # Update collectibles through collectible manager
         self.collectible_manager.update(dt)
-        
+
         # Track stars that went off-screen
         for collectible in list(self.collectibles):
             if collectible.rect.top > self.game.height:
@@ -405,16 +406,16 @@ class PlayingState(State):
         for enemy in list(self.enemies):
             if enemy.rect.top > self.game.height:
                 self.stats["enemies_escaped"] += 1
-                
+
         # Update collection rate and kill rate statistics
         total_stars = self.stats["stars_collected"] + self.stats["stars_missed"]
         if total_stars > 0:
             self.stats["collection_rate"] = (self.stats["stars_collected"] / total_stars) * 100
-            
+
         total_enemies = self.stats["enemies_killed"] + self.stats["enemies_escaped"]
         if total_enemies > 0:
             self.stats["kill_rate"] = (self.stats["enemies_killed"] / total_enemies) * 100
-            
+
         if self.stats["shots_fired"] > 0:
             self.stats["accuracy"] = (self.stats["shots_hit"] / self.stats["shots_fired"]) * 100
 
@@ -455,7 +456,7 @@ class PlayingState(State):
             if self.player.shoot(self.game_time, self.player_projectiles):
                 # Track shots fired
                 self.stats["shots_fired"] += 1
-                
+
                 # Add new projectiles to all_sprites
                 for proj in self.player_projectiles:
                     if proj not in self.all_sprites:
@@ -485,14 +486,14 @@ class PlayingState(State):
         self.ui_manager.render(
             screen, self.player, self.level_manager, self.enemy_manager, self.total_stars_collected
         )
-        
+
         # If showing level summary, draw it
         if self.showing_level_summary:
             self._draw_level_summary(screen)
 
     def _draw_level_summary(self, screen):
         """Draw the level completion summary screen.
-        
+
         Args:
             screen: The pygame surface to render to
         """
@@ -500,18 +501,20 @@ class PlayingState(State):
         overlay = pygame.Surface((self.game.width, self.game.height), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 180))  # RGBA, semi-transparent black
         screen.blit(overlay, (0, 0))
-        
+
         # Title
         summary_font = pygame.font.Font(None, 48)
-        title_text = summary_font.render(f"LEVEL {self.current_level} COMPLETE!", True, (255, 220, 50))
+        title_text = summary_font.render(
+            f"LEVEL {self.current_level} COMPLETE!", True, (255, 220, 50)
+        )
         title_rect = title_text.get_rect(center=(self.game.width // 2, 100))
         screen.blit(title_text, title_rect)
-        
+
         # Stats box
         stat_font = pygame.font.Font(None, 28)
         stat_y = 180
         stat_spacing = 35
-        
+
         # Performance stats
         stats_to_show = [
             f"Enemies Defeated: {self.stats['enemies_killed']}",
@@ -522,32 +525,38 @@ class PlayingState(State):
             f"Shots Fired: {self.stats['shots_fired']}",
             f"Accuracy: {self.stats['accuracy']:.1f}%",
         ]
-        
+
         # Draw stats
         for i, stat in enumerate(stats_to_show):
             text = stat_font.render(stat, True, (220, 220, 220))
             rect = text.get_rect(center=(self.game.width // 2, stat_y + i * stat_spacing))
             screen.blit(text, rect)
-        
+
         # Score summary
         score_y = stat_y + len(stats_to_show) * stat_spacing + 30
-        
+
         score_items = [
             ("Base Score:", self.base_score, (255, 255, 255)),
-            (f"Performance Bonus ({self.bonus_multiplier:.2f}x):", self.bonus_score, (100, 255, 100)),
+            (
+                f"Performance Bonus ({self.bonus_multiplier:.2f}x):",
+                self.bonus_score,
+                (100, 255, 100),
+            ),
             ("TOTAL SCORE:", self.level_score, (255, 220, 50)),
         ]
-        
+
         for i, (label, value, color) in enumerate(score_items):
             text = stat_font.render(f"{label} {value}", True, color)
             rect = text.get_rect(center=(self.game.width // 2, score_y + i * stat_spacing))
             screen.blit(text, rect)
-        
+
         # Continue prompt
         continue_y = score_y + len(score_items) * stat_spacing + 40
-        continue_text = stat_font.render("Press any key to continue to the shop...", True, (180, 180, 180))
+        continue_text = stat_font.render(
+            "Press any key to continue to the shop...", True, (180, 180, 180)
+        )
         continue_rect = continue_text.get_rect(center=(self.game.width // 2, continue_y))
-        
+
         # Blink the prompt
         if (self.game_time * 2) % 2 < 1:  # Blink every half second
             screen.blit(continue_text, continue_rect)
@@ -618,31 +627,34 @@ class PlayingState(State):
                 3,
             )
 
-        # Draw stats in bottom left corner during gameplay
-        stats_text = f"Kills: {self.stats['enemies_killed']} " \
-                    f"Escaped: {self.stats['enemies_escaped']} " \
-                    f"K/D: {self.stats['kill_rate']:.1f}% " \
-                    f"Stars: {self.stats['stars_collected']}/{self.stats['stars_collected'] + self.stats['stars_missed']} " \
-                    f"Acc: {self.stats['accuracy']:.1f}%"
-        
-        stats_render = self.font.render(stats_text, True, (200, 200, 200))
+        # Draw debug status
+        debug_text = (
+            f"Killed: {self.stats['enemies_killed']} "
+            f"Escaped: {self.stats['enemies_escaped']} "
+            f"K/D: {self.stats['kill_rate']:.1f}% "
+            f"Stars: {self.stats['stars_collected']}/"
+            f"{self.stats['stars_collected'] + self.stats['stars_missed']} "
+            f"Acc: {self.stats['accuracy']:.1f}%"
+        )
+
+        stats_render = self.font.render(debug_text, True, (200, 200, 200))
         screen.blit(stats_render, (10, self.game.height - 30))
 
     def _calculate_level_score(self):
         """Calculate final level score with performance bonuses."""
         # Calculate score based on performance metrics
         performance_bonus = (
-            (self.stats["kill_rate"] * 0.5) +
-            (self.stats["collection_rate"] * 0.3) + 
-            (self.stats["accuracy"] * 0.2)
+            (self.stats["kill_rate"] * 0.5)
+            + (self.stats["collection_rate"] * 0.3)
+            + (self.stats["accuracy"] * 0.2)
         )
-        
+
         # Calculate bonus multiplier (up to 2x)
         self.bonus_multiplier = 1.0 + (performance_bonus / 100)
-        
+
         # Calculate bonus score
         self.bonus_score = int(self.base_score * (self.bonus_multiplier - 1.0))
-        
+
         # Apply bonus to player score
         self.level_score = self.base_score + self.bonus_score
         self.player.score = self.level_score
