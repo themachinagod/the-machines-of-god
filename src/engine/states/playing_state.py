@@ -2,20 +2,14 @@
 Playing state for the main gameplay.
 """
 
-import random
-
 import pygame
 
+from engine.managers.collectible_manager import CollectibleManager
+from engine.managers.collision_manager import CollisionManager
+from engine.managers.enemy_manager import EnemyManager
+from engine.managers.level_manager import LevelManager
+from engine.managers.ui_manager import UIManager
 from engine.visual import ParallaxBackground
-from entities.collectible import HealthPack, ShieldPack, Star
-from entities.enemy import (
-    BasicEnemy,
-    DartEnemy,
-    HeavyBomber,
-    ShieldBearerEnemy,
-    ShooterEnemy,
-    ZigzagEnemy,
-)
 from entities.player import Player
 
 from .base_state import State
@@ -43,6 +37,16 @@ class PlayingState(State):
         self.enemy_projectiles = pygame.sprite.Group()
         self.collectibles = pygame.sprite.Group()
 
+        # Create sprite groups dictionary for easier manager access
+        self.sprite_groups = {
+            "all": self.all_sprites,
+            "enemies": self.enemies,
+            "player_projectiles": self.player_projectiles,
+            "player_missiles": self.player_missiles,
+            "enemy_projectiles": self.enemy_projectiles,
+            "collectibles": self.collectibles,
+        }
+
         # Create player
         self.player = Player(game.width // 2, game.height - 100)
         self.all_sprites.add(self.player)
@@ -61,16 +65,14 @@ class PlayingState(State):
         self.current_level = 1
         self.level_time = 0
         self.level_duration = 90  # Level lasts 90 seconds
-        self.wave_timer = 0
-        self.wave_index = 0
 
         # Level completion
         self.level_complete = False
         self.completion_timer = 0
         self.completion_delay = 3.0  # Time to show completion message
 
-        # Wave definitions for level 1
-        self.waves = [
+        # Initialize wave definitions for level 1
+        self.base_waves = [
             # Wave 1: Basic enemies, easy pattern
             {
                 "duration": 15,  # Seconds this wave lasts
@@ -117,11 +119,47 @@ class PlayingState(State):
             },
         ]
 
-        # Enemy spawn timing for current wave
-        self.enemy_spawn_timers = {}
-
         # Game progression data
         self.total_stars_collected = 0
+
+        # Initialize managers
+        self._init_managers()
+
+    def _init_managers(self):
+        """Initialize all game manager components."""
+        # Create collectible manager
+        self.collectible_manager = CollectibleManager(
+            self.game.width, self.game.height, self.all_sprites, self.collectibles
+        )
+
+        # Create collision manager
+        self.collision_manager = CollisionManager(self.sprite_groups, self.collectible_manager)
+
+        # Create enemy manager
+        self.enemy_manager = EnemyManager(
+            self.game.width,
+            self.game.height,
+            self.all_sprites,
+            self.enemies,
+            self.enemy_projectiles,
+        )
+
+        # Create level manager
+        self.level_manager = LevelManager(self.game)
+
+        # Create UI manager
+        self.ui_manager = UIManager(self.game.width, self.game.height)
+
+        # Set up the level
+        self._setup_level()
+
+    def _setup_level(self):
+        """Set up the level based on current level number."""
+        # Get difficulty-scaled waves
+        scaled_waves = self.level_manager.scale_difficulty(self.base_waves)
+
+        # Initialize enemy manager with scaled waves
+        self.enemy_manager.set_waves(scaled_waves)
 
     def enter(self):
         """Called when entering the playing state."""
@@ -165,11 +203,8 @@ class PlayingState(State):
 
         # Reset level data for current level
         self.level_time = 0
-        self.wave_timer = 0
-        self.wave_index = 0
         self.level_complete = False
         self.completion_timer = 0
-        self.enemy_spawn_timers = {}
 
         # Restore player attributes if we had any
         if player_attributes:
@@ -180,6 +215,9 @@ class PlayingState(State):
             self.player.health = self.player.max_health
             self.player.lives = 3
             self.player.score = 0
+
+        # Setup level
+        self._setup_level()
 
     def handle_event(self, event):
         """Handle input events for the playing state.
@@ -243,71 +281,35 @@ class PlayingState(State):
         self.game_time += dt
 
         # Handle level timing and completion
-        self._update_level_timing(dt)
-        if self.level_complete:
+        self.level_manager.update(dt)
+        if self.level_manager.is_level_complete():
             return  # Skip other updates if level is complete
 
-        # Update game entities
+        # Update wave timing
+        self.enemy_manager.update_wave_timer(dt)
+
+        # Update player and weapons
         self._update_player_and_weapons(dt)
-        self._update_enemies(dt)
-        self._update_collectibles(dt)
+
+        # Update enemies through enemy manager
+        self.enemy_manager.update(dt, self.game_time)
+
+        # Update collectibles through collectible manager
+        self.collectible_manager.update(dt)
 
         # Update background
         self.background.update(dt)
 
-        # Check collisions
-        self._check_collisions()
+        # Check collisions using collision manager
+        player_killed = self.collision_manager.check_collisions(self.player)
 
-        # Spawn any necessary enemies
-        self._process_wave_spawns(dt)
+        # Update total stars collected
+        self.total_stars_collected = self.collision_manager.total_stars_collected
 
-    def _update_level_timing(self, dt):
-        """Update level timing and wave progression.
-
-        Args:
-            dt: Time elapsed since last update in seconds
-        """
-        # Update level timer
-        self.level_time += dt
-
-        # Check for level completion
-        if self.level_time >= self.level_duration:
-            if not self.level_complete:
-                self.level_complete = True
-                print(f"Level {self.current_level} complete!")
-
-        # Handle level completion delay
-        if self.level_complete:
-            self.completion_timer += dt
-            if self.completion_timer >= self.completion_delay:
-                # Save current game state for persistence
-                self._save_game_state()
-                # Go to shop after completing level
-                self.game.change_state("shop")
-                return
-
-        # Update wave timing
-        self.wave_timer += dt
-
-        # Check if we need to switch to next wave
-        current_wave = self.waves[self.wave_index]
-        if self.wave_timer >= current_wave["duration"] and self.wave_index < len(self.waves) - 1:
-            self.wave_timer = 0
-            self.wave_index += 1
-            self.enemy_spawn_timers = {}  # Reset timers for new wave
-            print(f"Starting wave {self.wave_index + 1}")
-
-        # Handle enemy spawning based on current wave
-        self._process_wave_spawns(dt)
-
-    def _save_game_state(self):
-        """Save the current game state for level progression."""
-        # Ensure we have a reference to game to save state
-        if hasattr(self.game, "_save_game_data"):
-            self.game._save_game_data()
-
-        # Mark game as having saved data
-        self.game.has_saved_game = True
+        # Check if player was killed
+        if player_killed:
+            # Game over - return to menu
+            self.game.change_state("menu")
 
     def _update_player_and_weapons(self, dt):
         """Update player and weapon systems.
@@ -337,230 +339,6 @@ class PlayingState(State):
         self.player_missiles.update(dt)
         self.enemy_projectiles.update(dt)
 
-    def _update_enemies(self, dt):
-        """Update enemies and their shooting.
-
-        Args:
-            dt: Time elapsed since last update in seconds
-        """
-        # Update enemies and handle enemy shooting
-        for enemy in self.enemies:
-            enemy.update(dt)
-            # Let shooter enemies shoot
-            if hasattr(enemy, "can_shoot") and enemy.can_shoot:
-                if enemy.shoot(self.game_time, self.enemy_projectiles):
-                    # Add new projectiles to all_sprites
-                    for proj in self.enemy_projectiles:
-                        if proj not in self.all_sprites:
-                            self.all_sprites.add(proj)
-
-    def _update_collectibles(self, dt):
-        """Update collectibles and magnet effect.
-
-        Args:
-            dt: Time elapsed since last update in seconds
-        """
-        # Update collectibles
-        self.collectibles.update(dt)
-
-        # Apply magnet effect if player has magnet upgrade
-        if self.player.magnet_radius > 0:
-            self._apply_magnet_effect()
-
-    def _process_wave_spawns(self, dt):
-        """Process enemy spawning for the current wave.
-
-        Args:
-            dt: Time elapsed since last update in seconds
-        """
-        current_wave = self.waves[self.wave_index]
-        for enemy_def in current_wave["enemies"]:
-            enemy_type = enemy_def["type"]
-
-            # Initialize timer if not exists
-            if enemy_type not in self.enemy_spawn_timers:
-                self.enemy_spawn_timers[enemy_type] = 0
-
-            # Update timer
-            self.enemy_spawn_timers[enemy_type] += dt
-
-            # Check if it's time to spawn
-            if self.enemy_spawn_timers[enemy_type] >= enemy_def["interval"]:
-                self.enemy_spawn_timers[enemy_type] = 0
-
-                # Spawn enemies based on count
-                for _ in range(enemy_def["count"]):
-                    self._spawn_enemy(enemy_type)
-
-    def _spawn_enemy(self, enemy_type="basic"):
-        """Spawn a new enemy at a random position.
-
-        Args:
-            enemy_type (str): Type of enemy to spawn
-        """
-        x = random.randint(50, self.game.width - 50)
-
-        if enemy_type == "basic":
-            enemy = BasicEnemy(x, -50)
-        elif enemy_type == "zigzag":
-            enemy = ZigzagEnemy(x, -50)
-        elif enemy_type == "shooter":
-            enemy = ShooterEnemy(x, -50)
-        elif enemy_type == "heavy":
-            enemy = HeavyBomber(x, -50)
-        elif enemy_type == "dart":
-            enemy = DartEnemy(x, -50)
-        elif enemy_type == "shield":
-            enemy = ShieldBearerEnemy(x, -50)
-        else:
-            enemy = BasicEnemy(x, -50)
-
-        self.enemies.add(enemy)
-        self.all_sprites.add(enemy)
-
-    def _apply_magnet_effect(self):
-        """Pull collectibles toward the player if they're within magnet radius."""
-        if not self.player.magnet_radius or not self.collectibles:
-            return
-
-        player_pos = pygame.math.Vector2(self.player.rect.centerx, self.player.rect.centery)
-
-        for collectible in self.collectibles:
-            collectible_pos = pygame.math.Vector2(
-                collectible.rect.centerx, collectible.rect.centery
-            )
-            distance = player_pos.distance_to(collectible_pos)
-
-            # If within radius, apply attraction force
-            if distance < self.player.magnet_radius:
-                # Calculate direction to player
-                direction = player_pos - collectible_pos
-
-                if direction.length() > 0:
-                    direction.normalize_ip()
-
-                    # Apply stronger force when closer
-                    force = (self.player.magnet_radius - distance) / self.player.magnet_radius
-
-                    # Update collectible position directly
-                    collectible.rect.x += (
-                        direction.x * force * 300 * 0.016
-                    )  # Hardcoded dt for smooth effect
-                    collectible.rect.y += direction.y * force * 300 * 0.016
-
-    def _check_collisions(self):
-        """Check for collisions between game objects."""
-        # Player projectiles hitting enemies
-        hits = pygame.sprite.groupcollide(self.enemies, self.player_projectiles, False, True)
-        for enemy, projectiles in hits.items():
-            # Force enemy death after one hit for immediate feedback
-            enemy.health = 0
-            self.player.score += enemy.value
-
-            # Spawn collectibles with probability
-            self._spawn_collectibles(enemy.rect.centerx, enemy.rect.centery)
-
-            # Create explosion effect
-            explosion = pygame.Surface((60, 60), pygame.SRCALPHA)
-            pygame.draw.circle(explosion, (255, 200, 50, 200), (30, 30), 30)
-            pygame.draw.circle(explosion, (255, 150, 50, 180), (30, 30), 25)
-            pygame.draw.circle(explosion, (255, 100, 50, 150), (30, 30), 20)
-            pygame.draw.circle(explosion, (255, 50, 50, 100), (30, 30), 15)
-            # Kill the enemy
-            enemy.kill()
-
-        # Player missiles hitting enemies
-        hits = pygame.sprite.groupcollide(self.enemies, self.player_missiles, False, True)
-        for enemy, missiles in hits.items():
-            # Force enemy death after one missile hit
-            enemy.health = 0
-            self.player.score += enemy.value * 2  # Bonus score for missile kills
-
-            # Higher chance of collectibles from missile kills
-            self._spawn_collectibles(enemy.rect.centerx, enemy.rect.centery, bonus_chance=True)
-
-            # Create bigger explosion effect
-            explosion = pygame.Surface((80, 80), pygame.SRCALPHA)
-            pygame.draw.circle(explosion, (255, 200, 50, 200), (40, 40), 40)
-            pygame.draw.circle(explosion, (255, 150, 50, 180), (40, 40), 35)
-            pygame.draw.circle(explosion, (255, 100, 50, 150), (40, 40), 30)
-            pygame.draw.circle(explosion, (255, 50, 50, 100), (40, 40), 25)
-            # Kill the enemy
-            enemy.kill()
-
-        # Enemies hitting player
-        if pygame.sprite.spritecollideany(self.player, self.enemies):
-            # Player hit by enemy
-            self.player.take_damage(10)
-            # Remove the enemy that hit the player
-            for enemy in pygame.sprite.spritecollide(self.player, self.enemies, True):
-                pass
-
-        # Enemy projectiles hitting player
-        hits = pygame.sprite.spritecollide(self.player, self.enemy_projectiles, True)
-        for _ in hits:
-            self.player.take_damage(5)
-
-        # Player collecting items
-        hits = pygame.sprite.spritecollide(self.player, self.collectibles, False)
-        for collectible in hits:
-            if isinstance(collectible, Star):
-                self.total_stars_collected += collectible.value
-                self.player.score += collectible.value
-            elif isinstance(collectible, HealthPack):
-                self.player.health = min(
-                    self.player.max_health, self.player.health + collectible.value
-                )
-            elif isinstance(collectible, ShieldPack):
-                self.player.shield = min(
-                    self.player.max_shield, self.player.shield + collectible.value
-                )
-
-            # Remove the collectible
-            collectible.collect()
-
-        # Check if player is dead
-        if self.player.lives <= 0:
-            # Game over - return to menu
-            self.game.change_state("menu")
-
-    def _spawn_collectibles(self, x, y, bonus_chance=False):
-        """Spawn collectibles at the specified position.
-
-        Args:
-            x (int): X position
-            y (int): Y position
-            bonus_chance (bool): If True, increases drop chances
-        """
-        # Base drop chances
-        star_chance = 0.4
-        health_chance = 0.05
-        shield_chance = 0.02
-
-        # Apply bonus if specified
-        if bonus_chance:
-            star_chance = 0.6
-            health_chance = 0.1
-            shield_chance = 0.05
-
-        # Star drop
-        if random.random() < star_chance:
-            star = Star(x, y, value=random.randint(5, 15))
-            self.collectibles.add(star)
-            self.all_sprites.add(star)
-
-        # Health pack drop
-        if random.random() < health_chance:
-            health = HealthPack(x, y)
-            self.collectibles.add(health)
-            self.all_sprites.add(health)
-
-        # Shield pack drop
-        if random.random() < shield_chance:
-            shield = ShieldPack(x, y)
-            self.collectibles.add(shield)
-            self.all_sprites.add(shield)
-
     def render(self, screen):
         """Render the playing state.
 
@@ -576,8 +354,10 @@ class PlayingState(State):
         # Draw all sprites
         self.all_sprites.draw(screen)
 
-        # Draw UI elements
-        self._draw_ui(screen)
+        # Draw UI elements using UI manager
+        self.ui_manager.render(
+            screen, self.player, self.level_manager, self.enemy_manager, self.total_stars_collected
+        )
 
     def _draw_ui(self, screen):
         """Draw user interface elements."""
@@ -602,7 +382,9 @@ class PlayingState(State):
         screen.blit(hud_text, (10, 10))
 
         # Second row for additional info
-        wave_text = f"Level: {self.current_level}  Wave: {self.wave_index + 1}/{len(self.waves)}"
+        current_wave = self.enemy_manager.get_current_wave_index() + 1  # 1-based for display
+        total_waves = self.enemy_manager.get_total_waves()
+        wave_text = f"Level: {self.current_level}  Wave: {current_wave}/{total_waves}"
         hud_text2 = self.font.render(
             f"{stars_text}  {missiles_text}  {wave_text}",
             True,
