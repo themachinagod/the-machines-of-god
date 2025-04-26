@@ -121,6 +121,19 @@ class PlayingState(State):
 
         # Game progression data
         self.total_stars_collected = 0
+        
+        # Statistics tracking
+        self.stats = {
+            "enemies_killed": 0,
+            "enemies_escaped": 0,
+            "stars_collected": 0,
+            "stars_missed": 0,
+            "shots_fired": 0,
+            "shots_hit": 0,
+            "accuracy": 0,
+            "collection_rate": 0,
+            "kill_rate": 0,
+        }
 
         # Initialize managers
         self._init_managers()
@@ -134,6 +147,9 @@ class PlayingState(State):
 
         # Create collision manager
         self.collision_manager = CollisionManager(self.sprite_groups, self.collectible_manager)
+        
+        # Set the stats reference in collision manager
+        self.collision_manager.set_stats_reference(self.stats)
 
         # Create enemy manager
         self.enemy_manager = EnemyManager(
@@ -212,6 +228,21 @@ class PlayingState(State):
         self.level_time = 0
         self.level_complete = False
         self.completion_timer = 0
+        
+        # Keep persistent stats across levels, but reset for new game
+        if not player_attributes and (self.player.health <= 0 or self.current_level == 1):
+            # Reset stats for new game
+            self.stats = {
+                "enemies_killed": 0,
+                "enemies_escaped": 0,
+                "stars_collected": 0, 
+                "stars_missed": 0,
+                "shots_fired": 0,
+                "shots_hit": 0,
+                "accuracy": 0,
+                "collection_rate": 0,
+                "kill_rate": 0,
+            }
 
         # Restore player attributes if we had any
         if player_attributes:
@@ -303,6 +334,42 @@ class PlayingState(State):
 
         # Update collectibles through collectible manager
         self.collectible_manager.update(dt)
+        
+        # Track stars that went off-screen
+        for collectible in list(self.collectibles):
+            if collectible.rect.top > self.game.height:
+                if isinstance(collectible, Star):
+                    self.stats["stars_missed"] += 1
+                collectible.kill()
+
+        # Track enemies that escaped
+        for enemy in list(self.enemies):
+            if enemy.rect.top > self.game.height:
+                self.stats["enemies_escaped"] += 1
+                
+        # Update collection rate and kill rate statistics
+        total_stars = self.stats["stars_collected"] + self.stats["stars_missed"]
+        if total_stars > 0:
+            self.stats["collection_rate"] = (self.stats["stars_collected"] / total_stars) * 100
+            
+        total_enemies = self.stats["enemies_killed"] + self.stats["enemies_escaped"]
+        if total_enemies > 0:
+            self.stats["kill_rate"] = (self.stats["enemies_killed"] / total_enemies) * 100
+            
+        if self.stats["shots_fired"] > 0:
+            self.stats["accuracy"] = (self.stats["shots_hit"] / self.stats["shots_fired"]) * 100
+
+        # Calculate score based on performance metrics
+        base_score = self.player.score
+        performance_bonus = (
+            (self.stats["kill_rate"] * 0.5) +
+            (self.stats["collection_rate"] * 0.3) + 
+            (self.stats["accuracy"] * 0.2)
+        )
+        
+        # Apply performance bonus to score (up to 2x multiplier)
+        bonus_multiplier = 1.0 + (performance_bonus / 100)
+        self.player.score = int(base_score * bonus_multiplier)
 
         # Update background
         self.background.update(dt)
@@ -336,6 +403,9 @@ class PlayingState(State):
         # Continuous fire if space is held
         if keys[pygame.K_SPACE]:
             if self.player.shoot(self.game_time, self.player_projectiles):
+                # Track shots fired
+                self.stats["shots_fired"] += 1
+                
                 # Add new projectiles to all_sprites
                 for proj in self.player_projectiles:
                     if proj not in self.all_sprites:
@@ -431,3 +501,13 @@ class PlayingState(State):
                 6.28 * shield_pct,  # Partial circle based on shield percentage
                 3,
             )
+
+        # Draw stats in bottom left corner if needed
+        stats_text = f"Kills: {self.stats['enemies_killed']} " \
+                    f"Escaped: {self.stats['enemies_escaped']} " \
+                    f"K/D: {self.stats['kill_rate']:.1f}% " \
+                    f"Stars: {self.stats['stars_collected']}/{self.stats['stars_collected'] + self.stats['stars_missed']} " \
+                    f"Acc: {self.stats['accuracy']:.1f}%"
+        
+        stats_render = self.font.render(stats_text, True, (200, 200, 200))
+        screen.blit(stats_render, (10, self.game.height - 30))

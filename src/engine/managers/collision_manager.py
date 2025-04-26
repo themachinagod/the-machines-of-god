@@ -22,6 +22,17 @@ class CollisionManager:
 
         # Track game state
         self.total_stars_collected = 0
+        
+        # Statistics references - these will be set from the playing state
+        self.stats = None
+
+    def set_stats_reference(self, stats):
+        """Set a reference to the stats dictionary for tracking.
+        
+        Args:
+            stats (dict): Reference to the stats dictionary
+        """
+        self.stats = stats
 
     def check_collisions(self, player):
         """Check and handle all collisions in the game.
@@ -64,9 +75,17 @@ class CollisionManager:
         )
 
         for enemy, projectiles in hits.items():
+            # Track shots hit
+            if self.stats:
+                self.stats["shots_hit"] += len(projectiles)
+            
             # Force enemy death after one hit for immediate feedback
             enemy.health = 0
             player.score += enemy.value
+            
+            # Track enemies killed
+            if self.stats:
+                self.stats["enemies_killed"] += 1
 
             # Spawn collectibles with probability
             self.collectible_manager.spawn_collectibles(enemy.rect.centerx, enemy.rect.centery)
@@ -90,6 +109,10 @@ class CollisionManager:
             # Force enemy death after one missile hit
             enemy.health = 0
             player.score += enemy.value * 2  # Bonus score for missile kills
+            
+            # Track enemies killed
+            if self.stats:
+                self.stats["enemies_killed"] += 1
 
             # Higher chance of collectibles from missile kills
             self.collectible_manager.spawn_collectibles(
@@ -155,6 +178,11 @@ class CollisionManager:
             if isinstance(collectible, Star):
                 self.total_stars_collected += collectible.value
                 player.score += collectible.value
+                
+                # Track stars collected
+                if self.stats:
+                    self.stats["stars_collected"] += 1
+                    
             elif isinstance(collectible, HealthPack):
                 player.health = min(player.max_health, player.health + collectible.value)
             elif isinstance(collectible, ShieldPack):
