@@ -163,6 +163,13 @@ class PlayingState(State):
 
     def enter(self):
         """Called when entering the playing state."""
+        # Debug - Print player weapon info
+        if hasattr(self, "player") and self.player:
+            print(f"DEBUG - Entering PlayingState - Level: {self.current_level}")
+            print(f"DEBUG - Player primary_pattern: {self.player.primary_pattern}")
+            print(f"DEBUG - Player primary_level: {self.player.primary_level}")
+            print(f"DEBUG - Player primary_cooldown: {self.player.primary_cooldown}")
+
         # Store player attributes if they exist and we're continuing a game
         player_attributes = {}
         if hasattr(self, "player") and self.player:

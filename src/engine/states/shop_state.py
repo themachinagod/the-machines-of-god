@@ -117,8 +117,10 @@ class ShopState(State):
                 # Return to menu
                 self.game.change_state("menu")
             elif event.key == pygame.K_RETURN or event.key == pygame.K_n or event.key == pygame.K_c:
-                # Continue to next level
+                # Continue to next level - this is the key that triggers level progression
                 self._continue_to_next_level()
+                # Explicitly return to prevent any further processing
+                return
             elif event.key == pygame.K_UP:
                 # Navigate up
                 self.selected_index = (self.selected_index - 1) % len(self.upgrade_keys)
@@ -141,19 +143,40 @@ class ShopState(State):
 
         # Increment level
         play_state.current_level += 1
+        play_state.level_manager.current_level = play_state.current_level
 
         # Reset level timers and completion flags
         play_state.level_time = 0
-        play_state.wave_timer = 0
-        play_state.wave_index = 0
+        play_state.level_manager.level_time = 0
+        play_state.level_manager.level_complete = False
+        play_state.level_manager.completion_timer = 0
+
+        # Reset enemy manager and wave manager
+        play_state.enemy_manager.wave_manager.wave_timer = 0
+        play_state.enemy_manager.wave_manager.current_wave_index = 0
+
+        # Reset level completion flags
         play_state.level_complete = False
         play_state.completion_timer = 0
+
+        # Ensure the waves are properly set up for the new level
+        play_state._setup_level()
 
         # Increase difficulty for next level (more enemies, faster spawns)
         self._scale_difficulty(play_state)
 
-        # Return to playing state with next level
-        self.game.change_state("playing")
+        # Force clear any lingering game entities
+        play_state.enemy_manager.clear_enemies()
+
+        # Important: exit the shop state first
+        self.exit()
+
+        # Explicitly switch to playing state
+        self.game.current_state_name = "playing"
+        self.game.current_state = self.game.states["playing"]
+
+        # Enter the playing state to ensure proper initialization
+        play_state.enter()
 
     def _scale_difficulty(self, play_state):
         """Scale difficulty based on current level."""
@@ -161,7 +184,7 @@ class ShopState(State):
         play_state.level_duration = 90 + (play_state.current_level - 1) * 15
 
         # Scale enemy spawn rates and counts
-        for wave in play_state.waves:
+        for wave in play_state.enemy_manager.wave_manager.waves:
             for enemy_def in wave["enemies"]:
                 # Increase enemy count based on level (careful not to overwhelm)
                 base_count = enemy_def["count"]
@@ -211,6 +234,9 @@ class ShopState(State):
                     elif key == "primary":
                         player.primary_level = upgrade["level"]
                         player.primary_pattern = upgrade["patterns"][upgrade["level"]]
+                        # Debug print to verify pattern change
+                        print(f"DEBUG - Primary weapon upgraded to level {player.primary_level}")
+                        print(f"DEBUG - New pattern: {player.primary_pattern}")
                     elif key == "shield":
                         player.max_shield = upgrade["values"][upgrade["level"]]
                         player.shield_recharge_rate = upgrade["recharge"][upgrade["level"]]

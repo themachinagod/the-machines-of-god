@@ -32,7 +32,7 @@ class Enemy(pygame.sprite.Sprite):
 
         # Base stats
         self.base_health = 20
-        self.base_speed = 60
+        self.base_speed = 120
         self.movement_type = "linear"  # Default movement type
 
         # Applied stats (affected by difficulty and variance)
@@ -42,9 +42,17 @@ class Enemy(pygame.sprite.Sprite):
 
         # Movement properties
         self.velocity = pygame.math.Vector2(0, self.speed)
-        self.amplitude = random.randint(20, 100)  # For zigzag movement
-        self.frequency = random.uniform(1.0, 3.0)  # For zigzag movement
+        self.amplitude = random.randint(50, 150)  # Increased for more horizontal movement
+        self.frequency = random.uniform(1.5, 4.0)  # Increased for more rapid direction changes
         self.timer = random.random() * math.pi * 2  # Randomize starting phase
+
+        # Additional movement properties for new patterns
+        self.horizontal_drift = random.choice([-1, 1]) * random.uniform(
+            20, 60
+        )  # Horizontal drift speed
+        self.direction_change_timer = random.uniform(1.0, 3.0)  # Time until direction change
+        self.current_direction_time = 0
+        self.screen_width = pygame.display.get_surface().get_size()[0]
 
     def update(self, dt):
         """Update the enemy's position and state.
@@ -59,57 +67,127 @@ class Enemy(pygame.sprite.Sprite):
             self._zigzag_movement(dt)
         elif self.movement_type == "circular":
             self._circular_movement(dt)
+        elif self.movement_type == "swooping":
+            self._swooping_movement(dt)
+        elif self.movement_type == "bouncing":
+            self._bouncing_movement(dt)
 
         # Check if enemy is off-screen
         screen_height = pygame.display.get_surface().get_size()[1]
         if self.rect.top > screen_height:
             self.kill()
 
+        # Keep within screen bounds horizontally with some buffer
+        if self.rect.left < -50:
+            self.rect.left = -50
+        elif self.rect.right > self.screen_width + 50:
+            self.rect.right = self.screen_width + 50
+
     def _linear_movement(self, dt):
-        """Basic downward movement.
+        """Basic downward movement with slight horizontal drift.
 
         Args:
             dt (float): Time elapsed since last update in seconds
         """
+        # Update direction change timer
+        self.current_direction_time += dt
+        if self.current_direction_time >= self.direction_change_timer:
+            self.current_direction_time = 0
+            self.direction_change_timer = random.uniform(1.0, 3.0)
+            self.horizontal_drift = random.choice([-1, 1]) * random.uniform(20, 60)
+
+        # Apply horizontal drift and vertical movement
+        self.rect.x += self.horizontal_drift * dt
         self.rect.y += self.speed * dt
 
     def _zigzag_movement(self, dt):
-        """Zigzag movement pattern.
+        """Enhanced zigzag movement pattern with larger amplitude.
 
         Args:
             dt (float): Time elapsed since last update in seconds
         """
         self.timer += dt
-        # Oscillate horizontal direction using sine wave
+        # Oscillate horizontal direction using sine wave with larger amplitude
         self.velocity.x = math.sin(self.timer * self.frequency) * self.amplitude
-        self.velocity.y = self.speed
+        self.velocity.y = (
+            self.speed * 0.8
+        )  # Slightly slower vertical movement to emphasize horizontal
 
-        # Normalize and apply speed
-        if self.velocity.length() > 0:
-            self.velocity.normalize_ip()
-
-        # Update position
+        # Apply speed without normalizing to maintain the zigzag pattern
         self.rect.x += self.velocity.x * dt
         self.rect.y += self.velocity.y * dt
 
     def _circular_movement(self, dt):
-        """Circular movement pattern.
+        """Enhanced circular movement pattern with more variation.
 
         Args:
             dt (float): Time elapsed since last update in seconds
         """
         self.timer += dt
-        # Create circular motion using sin and cos
-        self.velocity.x = math.sin(self.timer * 2) * 0.7
-        self.velocity.y = 0.5 + math.cos(self.timer * 2) * 0.3
+        # Create more dramatic circular motion
+        radius_x = self.amplitude * 1.2
+        radius_y = self.amplitude * 0.8
 
-        # Normalize and apply speed
-        if self.velocity.length() > 0:
-            self.velocity.normalize_ip()
+        # Calculate movement with elliptical path
+        self.velocity.x = math.sin(self.timer * self.frequency) * radius_x
+        self.velocity.y = 0.5 * self.speed + math.cos(self.timer * self.frequency) * radius_y
+
+        # Update position (not normalized to maintain elliptical path)
+        self.rect.x += self.velocity.x * dt
+        self.rect.y += self.velocity.y * dt
+
+    def _swooping_movement(self, dt):
+        """Swooping attack pattern - moves in arcs.
+
+        Args:
+            dt (float): Time elapsed since last update in seconds
+        """
+        self.timer += dt
+
+        # Calculate swooping motion (starts fast, slows, then speeds up again)
+        progress = (self.timer % 4.0) / 4.0  # 0.0 to 1.0 repeating cycle
+
+        # First half: swoop to one side
+        if progress < 0.5:
+            curve = math.sin(progress * math.pi)
+            self.velocity.x = curve * self.amplitude * 2
+            self.velocity.y = self.speed * (0.5 + progress)
+        # Second half: swoop to other side
+        else:
+            curve = math.sin((progress - 0.5) * math.pi)
+            self.velocity.x = -curve * self.amplitude * 2
+            self.velocity.y = self.speed * (1.0 - (progress - 0.5) * 0.5)
+
+        # Apply movement
+        self.rect.x += self.velocity.x * dt
+        self.rect.y += self.velocity.y * dt
+
+    def _bouncing_movement(self, dt):
+        """Bouncing movement that rebounds off screen edges.
+
+        Args:
+            dt (float): Time elapsed since last update in seconds
+        """
+        # Update direction change timer for vertical movement adjustments
+        self.current_direction_time += dt
+        if self.current_direction_time >= self.direction_change_timer:
+            self.current_direction_time = 0
+            self.direction_change_timer = random.uniform(1.0, 2.0)
+            # Mostly downward but occasionally level or even slightly upward
+            vertical_direction = random.uniform(0.3, 1.2)
+            self.velocity.y = self.speed * vertical_direction
 
         # Update position
-        self.rect.x += self.velocity.x * self.speed * dt
-        self.rect.y += self.velocity.y * self.speed * dt
+        self.rect.x += self.horizontal_drift * dt
+        self.rect.y += self.velocity.y * dt
+
+        # Check for screen edge bounces
+        if self.rect.left <= 0:
+            self.rect.left = 0
+            self.horizontal_drift = abs(self.horizontal_drift) * random.uniform(0.8, 1.2)
+        elif self.rect.right >= self.screen_width:
+            self.rect.right = self.screen_width
+            self.horizontal_drift = -abs(self.horizontal_drift) * random.uniform(0.8, 1.2)
 
     def take_damage(self, amount):
         """Reduce enemy health by the specified amount.
@@ -149,6 +227,10 @@ class BasicEnemy(Enemy):
         """
         super().__init__(x, y, difficulty)
 
+        # Randomly choose between movement patterns
+        movement_choices = ["linear", "swooping"]
+        self.movement_type = random.choice(movement_choices)
+
         # Draw a simple enemy shape
         pygame.draw.circle(self.image, (200, 50, 50), (20, 20), 18)
         pygame.draw.circle(self.image, (150, 0, 0), (20, 20), 12)
@@ -170,6 +252,11 @@ class ZigzagEnemy(Enemy):
         """
         super().__init__(x, y, difficulty)
         self.movement_type = "zigzag"
+        self.speed = self.speed * 1.1  # ZigZag enemies are slightly faster
+
+        # Increase amplitude for more dramatic zigzag
+        self.amplitude = random.randint(80, 180)
+        self.frequency = random.uniform(2.0, 5.0)
 
         # Draw a simple enemy shape
         pygame.draw.polygon(self.image, (200, 150, 50), [(0, 20), (20, 0), (40, 20), (20, 40)])
@@ -265,7 +352,7 @@ class ShooterEnemy(Enemy):
 
 
 class HeavyBomber(Enemy):
-    """Heavy enemy that is slow but takes multiple hits to destroy."""
+    """Heavily armored enemy that moves slower but has more health."""
 
     def __init__(self, x, y, difficulty=1.0):
         """Initialize a heavy bomber enemy.
@@ -276,6 +363,15 @@ class HeavyBomber(Enemy):
             difficulty (float): Difficulty multiplier
         """
         super().__init__(x, y, difficulty)
+
+        # Heavy bombers are slower but have more health
+        self.speed = (
+            self.speed * 0.8
+        )  # Reduced speed (but faster than before due to base speed increase)
+        self.health = 3 * self.difficulty
+
+        # Update movement type to bouncing for more interesting paths
+        self.movement_type = "bouncing"
 
         # Override base stats
         self.base_health = 80
@@ -317,7 +413,7 @@ class HeavyBomber(Enemy):
 
 
 class DartEnemy(Enemy):
-    """Fast enemy that makes quick dashes across the screen."""
+    """Fast-moving enemy that darts across the screen."""
 
     def __init__(self, x, y, difficulty=1.0):
         """Initialize a dart enemy.
@@ -328,6 +424,10 @@ class DartEnemy(Enemy):
             difficulty (float): Difficulty multiplier
         """
         super().__init__(x, y, difficulty)
+        self.movement_type = "dart"
+
+        # Dart enemies are much faster
+        self.speed = self.speed * 1.5
 
         # Override base stats for dart enemy
         self.base_health = 15
@@ -385,13 +485,13 @@ class DartEnemy(Enemy):
                 if self.dash_timer >= self.dash_cooldown:
                     self.dash_ready = True
                     self.dash_timer = 0
-                    # Calculate new dash direction (mostly downward but with some angle)
+                    # Calculate new dash direction with more horizontal movement
                     self.dash_direction = pygame.math.Vector2(
-                        random.uniform(-0.5, 0.5), 1  # Some side motion  # Mostly downward
+                        random.uniform(-0.8, 0.8), random.uniform(0.6, 1.0)  # More side motion
                     ).normalize()
 
             # Check if we should start dashing
-            elif random.random() < 0.1 * dt:  # Small chance to dash each frame
+            elif random.random() < 0.2 * dt:  # Increased chance to dash
                 self.is_dashing = True
                 self.dash_ready = False
                 self.dash_timer = 0
@@ -409,17 +509,19 @@ class DartEnemy(Enemy):
             self.rect.x += dash_velocity.x * dt
             self.rect.y += dash_velocity.y * dt
 
-            # Keep within screen bounds horizontally
+            # Keep within screen bounds horizontally with wider range
             screen_width = pygame.display.get_surface().get_size()[0]
-            if self.rect.left < 0:
-                self.rect.left = 0
+            if self.rect.left < -30:
+                self.rect.left = -30
                 self.dash_direction.x = abs(self.dash_direction.x)  # Bounce
-            elif self.rect.right > screen_width:
-                self.rect.right = screen_width
+            elif self.rect.right > screen_width + 30:
+                self.rect.right = screen_width + 30
                 self.dash_direction.x = -abs(self.dash_direction.x)  # Bounce
         else:
-            # Normal downward movement
+            # Normal movement with some horizontal drift
+            self.rect.x += math.sin(self.timer * 2) * 40 * dt
             self.rect.y += self.speed * dt
+            self.timer += dt
 
         # Check if enemy is off-screen
         screen_height = pygame.display.get_surface().get_size()[1]
@@ -529,10 +631,12 @@ class ShieldBearerEnemy(Enemy):
             # Update shield appearance
             self._update_shield_position()
 
-        # Move downward with slight side motion
-        drift = math.sin(self.timer * 0.5) * 20 * dt
-        self.rect.x += drift
-        self.rect.y += self.speed * dt
+        # Enhanced movement with more interesting path
+        drift_x = math.sin(self.timer * 0.8) * 40 * dt
+        drift_y = math.cos(self.timer * 0.5) * 15 * dt
+
+        self.rect.x += drift_x
+        self.rect.y += self.speed * dt + drift_y
 
         # Check if enemy is off-screen
         screen_height = pygame.display.get_surface().get_size()[1]
