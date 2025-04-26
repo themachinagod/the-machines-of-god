@@ -3,6 +3,7 @@ Player class for Machines of God game.
 """
 
 import math
+import os
 
 import pygame
 
@@ -188,27 +189,39 @@ class Player(pygame.sprite.Sprite):
         """
         super().__init__()
 
-        # Create a directional ship image
-        self.image = pygame.Surface([32, 32], pygame.SRCALPHA)
+        # Track screen boundaries
+        self.screen_width = 0
+        self.screen_height = 0
 
-        # Draw a triangular ship pointing upward
-        ship_color = (0, 255, 255)  # Cyan color
+        # Load the player ship image instead of drawing a shape
+        try:
+            # Get the path to the assets directory
+            assets_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets"
+            )
+            ship_path = os.path.join(assets_path, "sprites", "playership.png")
 
-        # Main body - triangle pointing up
-        pygame.draw.polygon(self.image, ship_color, [(16, 4), (4, 28), (28, 28)])
+            # Load the image with alpha channel
+            self.original_image = pygame.image.load(ship_path).convert_alpha()
 
-        # Engine exhaust
-        pygame.draw.rect(self.image, (100, 100, 255), (12, 26, 8, 6))  # Blue exhaust
+            # Scale the image to 37.5% of original size (25% smaller than before)
+            scale_factor = 0.375  # 75% of previous 0.5 scale
+            original_size = self.original_image.get_size()
+            new_size = (int(original_size[0] * scale_factor), int(original_size[1] * scale_factor))
+            self.original_image = pygame.transform.scale(self.original_image, new_size)
 
-        # Cockpit/canopy
-        pygame.draw.rect(self.image, (200, 255, 255), (14, 12, 4, 6))  # Light cyan
-
-        # Wing details
-        pygame.draw.line(self.image, (0, 200, 200), (4, 28), (16, 18), 2)
-        pygame.draw.line(self.image, (0, 200, 200), (28, 28), (16, 18), 2)
-
-        # Original image for rotation
-        self.original_image = self.image.copy()
+            self.image = self.original_image.copy()
+        except Exception as e:
+            print(f"Error loading player ship image: {e}")
+            # Fallback to a simple shape if image loading fails
+            self.image = pygame.Surface([32, 32], pygame.SRCALPHA)
+            ship_color = (0, 255, 255)  # Cyan color
+            pygame.draw.polygon(self.image, ship_color, [(16, 4), (4, 28), (28, 28)])
+            pygame.draw.rect(self.image, (100, 100, 255), (12, 26, 8, 6))  # Blue exhaust
+            pygame.draw.rect(self.image, (200, 255, 255), (14, 12, 4, 6))  # Light cyan
+            pygame.draw.line(self.image, (0, 200, 200), (4, 28), (16, 18), 2)
+            pygame.draw.line(self.image, (0, 200, 200), (28, 28), (16, 18), 2)
+            self.original_image = self.image.copy()
 
         # Player rect
         self.rect = self.image.get_rect()
@@ -326,6 +339,16 @@ class Player(pygame.sprite.Sprite):
 
         return rotating
 
+    def set_screen_boundaries(self, width, height):
+        """Set the screen boundaries for the player.
+
+        Args:
+            width (int): Screen width
+            height (int): Screen height
+        """
+        self.screen_width = width
+        self.screen_height = height
+
     def update(self, dt, keys):
         """Update the player's position and state.
 
@@ -375,18 +398,16 @@ class Player(pygame.sprite.Sprite):
         self.rect.x += self.velocity.x * dt
         self.rect.y += self.velocity.y * dt
 
-        # Keep player on screen
-        screen_width, screen_height = pygame.display.get_surface().get_size()
-
+        # Keep player on screen - use our stored boundaries
         if self.rect.left < 0:
             self.rect.left = 0
-        elif self.rect.right > screen_width:
-            self.rect.right = screen_width
+        elif self.rect.right > self.screen_width and self.screen_width > 0:
+            self.rect.right = self.screen_width
 
         if self.rect.top < 0:
             self.rect.top = 0
-        elif self.rect.bottom > screen_height:
-            self.rect.bottom = screen_height
+        elif self.rect.bottom > self.screen_height and self.screen_height > 0:
+            self.rect.bottom = self.screen_height
 
         # Shield recharge
         if self.shield < self.max_shield and self.shield_recharge_rate > 0:
@@ -428,9 +449,13 @@ class Player(pygame.sprite.Sprite):
         # Update last shot time
         self.primary_last_shot = current_time
 
-        # Get the player position
-        x = self.rect.centerx
-        y = self.rect.centery
+        # Calculate the position at the front of the ship
+        # Get half the height of the ship for the offset
+        ship_offset = self.rect.height // 2
+
+        # Calculate the position at the front of the ship based on current angle and offset
+        x = self.rect.centerx + direction_x * ship_offset
+        y = self.rect.centery + direction_y * ship_offset
 
         # Fix for potential None or invalid pattern - ensure we default to basic pattern if needed
         if not hasattr(self, "primary_pattern") or self.primary_pattern is None:
@@ -593,12 +618,17 @@ class Player(pygame.sprite.Sprite):
         direction_x = math.sin(math.radians(self.angle))
         direction_y = -math.cos(math.radians(self.angle))
 
+        # Calculate the position at the front of the ship
+        ship_offset = self.rect.height // 2
+        front_x = self.rect.centerx + direction_x * ship_offset
+        front_y = self.rect.centery + direction_y * ship_offset
+
         # Fire missiles based on level
         if self.secondary_level == 1:
             # Single missile
             missile = PlayerMissile(
-                self.rect.centerx,
-                self.rect.centery,
+                front_x,
+                front_y,
                 direction_x,
                 direction_y,
                 damage=5,
@@ -615,16 +645,16 @@ class Player(pygame.sprite.Sprite):
 
             # Dual missiles, offset to each side
             left = PlayerMissile(
-                self.rect.centerx + perp_x * offset,
-                self.rect.centery + perp_y * offset,
+                front_x + perp_x * offset,
+                front_y + perp_y * offset,
                 direction_x,
                 direction_y,
                 damage=5,
                 target=target,
             )
             right = PlayerMissile(
-                self.rect.centerx - perp_x * offset,
-                self.rect.centery - perp_y * offset,
+                front_x - perp_x * offset,
+                front_y - perp_y * offset,
                 direction_x,
                 direction_y,
                 damage=5,

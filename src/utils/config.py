@@ -26,9 +26,9 @@ class Config:
         """
         default_config = {
             "video": {
-                "width": 1280,
-                "height": 720,
-                "fullscreen": False,
+                "width": 980,
+                "height": 1200,
+                "fullscreen": True,
                 "vsync": True,
                 "fps_limit": 60,
             },

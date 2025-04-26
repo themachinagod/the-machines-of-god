@@ -51,6 +51,8 @@ class PlayingState(State):
         # Create player
         self.player = Player(game.width // 2, game.height - 100)
         self.all_sprites.add(self.player)
+        # Set player boundaries to virtual screen dimensions
+        self.player.set_screen_boundaries(game.width, game.height)
 
         # Background scrolling
         self.bg_y = 0
@@ -189,6 +191,10 @@ class PlayingState(State):
 
     def enter(self):
         """Called when entering the playing state."""
+        # Set player boundaries to match the game's virtual dimensions
+        if hasattr(self, "player") and self.player:
+            self.player.set_screen_boundaries(self.game.width, self.game.height)
+
         # Debug - Print player weapon info
         if hasattr(self, "player") and self.player:
             print(f"DEBUG - Entering PlayingState - Level: {self.current_level}")

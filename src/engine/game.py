@@ -14,7 +14,7 @@ from engine.state import MenuState, PlayingState, ShopState
 class Game:
     """Main game class that manages the game loop and state transitions."""
 
-    def __init__(self, width=1280, height=720, fps=60):
+    def __init__(self, width=980, height=1280, fps=60):
         """Initialize the game with specified window dimensions and target FPS.
 
         Args:
@@ -22,10 +22,22 @@ class Game:
             height (int): Window height in pixels
             fps (int): Target frames per second
         """
-        self.width = width
-        self.height = height
+        # These will be the virtual dimensions (actual gameplay area)
+        self.virtual_width = width
+        self.virtual_height = height
+
+        # Get actual screen dimensions
+        display_info = pygame.display.Info()
+        self.screen_width = display_info.current_w
+        self.screen_height = display_info.current_h
+
+        # For consistency in references, maintain width/height for the virtual screen
+        self.width = self.virtual_width
+        self.height = self.virtual_height
+
         self.fps = fps
         self.running = False
+        self.fullscreen = True  # Default to fullscreen mode
 
         # Ensure save directory exists
         self.save_dir = os.path.join(
@@ -38,8 +50,15 @@ class Game:
         self.has_saved_game = os.path.exists(self.save_file)
 
         # Initialize display
-        self.screen = pygame.display.set_mode((width, height))
+        flags = pygame.FULLSCREEN if self.fullscreen else 0
+        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), flags)
         pygame.display.set_caption("Machines of God")
+
+        # Create virtual screen for consistent gameplay area
+        self.virtual_screen = pygame.Surface((self.virtual_width, self.virtual_height))
+
+        # Calculate scaling and positioning
+        self._update_screen_layout()
 
         # Set up the clock for timing
         self.clock = pygame.time.Clock()
@@ -57,6 +76,29 @@ class Game:
 
         # Load saved data
         self._load_game_data()
+
+    def _update_screen_layout(self):
+        """Calculate scaling and positioning for the virtual screen."""
+        # Calculate the aspect ratio of virtual screen and actual screen
+        virtual_ratio = self.virtual_width / self.virtual_height
+        screen_ratio = self.screen_width / self.screen_height
+
+        if screen_ratio > virtual_ratio:
+            # Screen is wider than virtual, scale by height
+            self.scale_height = self.screen_height
+            self.scale_width = int(self.scale_height * virtual_ratio)
+            self.scale_x = (self.screen_width - self.scale_width) // 2
+            self.scale_y = 0
+        else:
+            # Screen is taller than virtual, scale by width
+            self.scale_width = self.screen_width
+            self.scale_height = int(self.scale_width / virtual_ratio)
+            self.scale_x = 0
+            self.scale_y = (self.screen_height - self.scale_height) // 2
+
+        # Calculate the scaling factor for mouse input
+        self.scale_factor_x = self.virtual_width / self.scale_width
+        self.scale_factor_y = self.virtual_height / self.scale_height
 
     def run(self):
         """Run the main game loop."""
@@ -89,6 +131,21 @@ class Game:
             ):
                 self.running = False
 
+            # Translate mouse position events to virtual coordinates
+            if event.type in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP):
+                # Translate physical coordinates to virtual coordinates
+                if hasattr(event, "pos"):
+                    physical_x, physical_y = event.pos
+
+                    # Convert to virtual coordinate space if mouse is within game area
+                    if (
+                        self.scale_x <= physical_x < self.scale_x + self.scale_width
+                        and self.scale_y <= physical_y < self.scale_y + self.scale_height
+                    ):
+                        virtual_x = int((physical_x - self.scale_x) * self.scale_factor_x)
+                        virtual_y = int((physical_y - self.scale_y) * self.scale_factor_y)
+                        event.pos = (virtual_x, virtual_y)
+
             # Let the current state handle the event
             self.current_state.handle_event(event)
 
@@ -105,8 +162,35 @@ class Game:
         # Clear the screen
         self.screen.fill((0, 0, 0))
 
-        # Let the current state render
-        self.current_state.render(self.screen)
+        # Clear the virtual screen
+        self.virtual_screen.fill((0, 0, 0))
+
+        # Let the current state render to the virtual screen
+        self.current_state.render(self.virtual_screen)
+
+        # Scale and blit the virtual screen onto the actual screen with letterboxing
+        scaled_surface = pygame.transform.smoothscale(
+            self.virtual_screen, (self.scale_width, self.scale_height)
+        )
+        self.screen.blit(scaled_surface, (self.scale_x, self.scale_y))
+
+        # Draw letterbox borders if needed
+        if self.scale_x > 0:
+            # Draw vertical borders
+            pygame.draw.rect(self.screen, (20, 20, 40), (0, 0, self.scale_x, self.screen_height))
+            pygame.draw.rect(
+                self.screen,
+                (20, 20, 40),
+                (self.scale_x + self.scale_width, 0, self.scale_x, self.screen_height),
+            )
+        if self.scale_y > 0:
+            # Draw horizontal borders
+            pygame.draw.rect(self.screen, (20, 20, 40), (0, 0, self.screen_width, self.scale_y))
+            pygame.draw.rect(
+                self.screen,
+                (20, 20, 40),
+                (0, self.scale_y + self.scale_height, self.screen_width, self.scale_y),
+            )
 
         # Flip the display
         pygame.display.flip()
