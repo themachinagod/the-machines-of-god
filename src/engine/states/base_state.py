@@ -44,4 +44,4 @@ class State:
         Args:
             screen: The pygame surface to render to
         """
-        pass 
+        pass

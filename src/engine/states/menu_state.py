@@ -106,4 +106,4 @@ class MenuState(State):
             color = (255, 255, 100) if i == self.selected_option else (200, 200, 200)
             text = self.font_small.render(option["text"], True, color)
             rect = text.get_rect(center=(self.game.width // 2, self.game.height // 2 + i * 50))
-            screen.blit(text, rect) 
+            screen.blit(text, rect)

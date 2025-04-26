@@ -8,4 +8,4 @@ from .menu_state import MenuState
 from .playing_state import PlayingState
 from .shop_state import ShopState
 
-__all__ = ["State", "MenuState", "ShopState", "PlayingState"] 
+__all__ = ["State", "MenuState", "ShopState", "PlayingState"]

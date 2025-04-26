@@ -641,4 +641,4 @@ class PlayingState(State):
                 0,
                 6.28 * shield_pct,  # Partial circle based on shield percentage
                 3,
-            ) 
+            )

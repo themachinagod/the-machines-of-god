@@ -325,4 +325,4 @@ class ShopState(State):
             cost_rect = cost_text.get_rect(
                 right=self.game.width - 70, centery=y_start + 25 + (i * item_height)
             )
-            screen.blit(cost_text, cost_rect) 
+            screen.blit(cost_text, cost_rect)
