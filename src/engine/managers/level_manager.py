@@ -43,16 +43,13 @@ class LevelManager:
             self.level_complete = True
             state_changed = True
             print(f"Level {self.current_level} complete!")
+            
+            # Return True to indicate level is complete, but don't transition states
+            # Let the playing state handle showing the summary and transitioning
+            return True
 
-        # Handle level completion delay
-        if self.level_complete:
-            self.completion_timer += dt
-            if self.completion_timer >= self.completion_delay:
-                # Save current game state for persistence
-                self._save_game_state()
-                # Go to shop after completing level
-                self.game.change_state("shop")
-                return True
+        # Handle level completion delay - REMOVED automatic transition
+        # The playing state now handles this
 
         return state_changed
 

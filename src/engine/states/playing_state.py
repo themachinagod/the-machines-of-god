@@ -134,6 +134,15 @@ class PlayingState(State):
             "collection_rate": 0,
             "kill_rate": 0,
         }
+        
+        # Level scoring
+        self.base_score = 0
+        self.level_score = 0
+        self.bonus_score = 0
+        self.bonus_multiplier = 1.0
+        self.showing_level_summary = False
+        self.summary_timer = 0
+        self.summary_duration = 5.0  # Show summary for 5 seconds
 
         # Initialize managers
         self._init_managers()
@@ -263,6 +272,16 @@ class PlayingState(State):
         Args:
             event: The pygame event to handle
         """
+        # If showing level summary, any key proceeds to shop
+        if self.showing_level_summary and event.type == pygame.KEYDOWN:
+            self.showing_level_summary = False
+            self.summary_timer = 0
+            # Save current game state for persistence
+            self.level_manager._save_game_state()
+            # Go to shop after showing summary
+            self.game.change_state("shop")
+            return
+            
         # Handle pause
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_p:
@@ -317,10 +336,26 @@ class PlayingState(State):
         """
         # Update game time
         self.game_time += dt
+        
+        # If showing level summary, handle the timer and transition
+        if self.showing_level_summary:
+            self.summary_timer += dt
+            if self.summary_timer >= self.summary_duration:
+                self.showing_level_summary = False
+                self.summary_timer = 0
+                # Save current game state for persistence
+                self.level_manager._save_game_state()
+                # Go to shop after showing summary
+                self.game.change_state("shop")
+            return  # Skip other updates while showing summary
 
         # Handle level timing and completion
-        self.level_manager.update(dt)
-        if self.level_manager.is_level_complete():
+        level_changed = self.level_manager.update(dt)
+        
+        # If level is complete, calculate final score and show summary
+        if level_changed and self.level_manager.is_level_complete():
+            self._calculate_level_score()
+            self.showing_level_summary = True
             return  # Skip other updates if level is complete
 
         # Update wave timing
@@ -359,17 +394,8 @@ class PlayingState(State):
         if self.stats["shots_fired"] > 0:
             self.stats["accuracy"] = (self.stats["shots_hit"] / self.stats["shots_fired"]) * 100
 
-        # Calculate score based on performance metrics
-        base_score = self.player.score
-        performance_bonus = (
-            (self.stats["kill_rate"] * 0.5) +
-            (self.stats["collection_rate"] * 0.3) + 
-            (self.stats["accuracy"] * 0.2)
-        )
-        
-        # Apply performance bonus to score (up to 2x multiplier)
-        bonus_multiplier = 1.0 + (performance_bonus / 100)
-        self.player.score = int(base_score * bonus_multiplier)
+        # Store base score from game events, but don't apply multiplier yet
+        self.base_score = self.player.score
 
         # Update background
         self.background.update(dt)
@@ -435,6 +461,72 @@ class PlayingState(State):
         self.ui_manager.render(
             screen, self.player, self.level_manager, self.enemy_manager, self.total_stars_collected
         )
+        
+        # If showing level summary, draw it
+        if self.showing_level_summary:
+            self._draw_level_summary(screen)
+
+    def _draw_level_summary(self, screen):
+        """Draw the level completion summary screen.
+        
+        Args:
+            screen: The pygame surface to render to
+        """
+        # Semi-transparent overlay
+        overlay = pygame.Surface((self.game.width, self.game.height), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))  # RGBA, semi-transparent black
+        screen.blit(overlay, (0, 0))
+        
+        # Title
+        summary_font = pygame.font.Font(None, 48)
+        title_text = summary_font.render(f"LEVEL {self.current_level} COMPLETE!", True, (255, 220, 50))
+        title_rect = title_text.get_rect(center=(self.game.width // 2, 100))
+        screen.blit(title_text, title_rect)
+        
+        # Stats box
+        stat_font = pygame.font.Font(None, 28)
+        stat_y = 180
+        stat_spacing = 35
+        
+        # Performance stats
+        stats_to_show = [
+            f"Enemies Defeated: {self.stats['enemies_killed']}",
+            f"Enemies Escaped: {self.stats['enemies_escaped']}",
+            f"Kill Rate: {self.stats['kill_rate']:.1f}%",
+            f"Stars Collected: {self.stats['stars_collected']}",
+            f"Collection Rate: {self.stats['collection_rate']:.1f}%",
+            f"Shots Fired: {self.stats['shots_fired']}",
+            f"Accuracy: {self.stats['accuracy']:.1f}%",
+        ]
+        
+        # Draw stats
+        for i, stat in enumerate(stats_to_show):
+            text = stat_font.render(stat, True, (220, 220, 220))
+            rect = text.get_rect(center=(self.game.width // 2, stat_y + i * stat_spacing))
+            screen.blit(text, rect)
+        
+        # Score summary
+        score_y = stat_y + len(stats_to_show) * stat_spacing + 30
+        
+        score_items = [
+            ("Base Score:", self.base_score, (255, 255, 255)),
+            (f"Performance Bonus ({self.bonus_multiplier:.2f}x):", self.bonus_score, (100, 255, 100)),
+            ("TOTAL SCORE:", self.level_score, (255, 220, 50)),
+        ]
+        
+        for i, (label, value, color) in enumerate(score_items):
+            text = stat_font.render(f"{label} {value}", True, color)
+            rect = text.get_rect(center=(self.game.width // 2, score_y + i * stat_spacing))
+            screen.blit(text, rect)
+        
+        # Continue prompt
+        continue_y = score_y + len(score_items) * stat_spacing + 40
+        continue_text = stat_font.render("Press any key to continue to the shop...", True, (180, 180, 180))
+        continue_rect = continue_text.get_rect(center=(self.game.width // 2, continue_y))
+        
+        # Blink the prompt
+        if (self.game_time * 2) % 2 < 1:  # Blink every half second
+            screen.blit(continue_text, continue_rect)
 
     def _draw_ui(self, screen):
         """Draw user interface elements."""
@@ -502,7 +594,7 @@ class PlayingState(State):
                 3,
             )
 
-        # Draw stats in bottom left corner if needed
+        # Draw stats in bottom left corner during gameplay
         stats_text = f"Kills: {self.stats['enemies_killed']} " \
                     f"Escaped: {self.stats['enemies_escaped']} " \
                     f"K/D: {self.stats['kill_rate']:.1f}% " \
@@ -511,3 +603,22 @@ class PlayingState(State):
         
         stats_render = self.font.render(stats_text, True, (200, 200, 200))
         screen.blit(stats_render, (10, self.game.height - 30))
+
+    def _calculate_level_score(self):
+        """Calculate final level score with performance bonuses."""
+        # Calculate score based on performance metrics
+        performance_bonus = (
+            (self.stats["kill_rate"] * 0.5) +
+            (self.stats["collection_rate"] * 0.3) + 
+            (self.stats["accuracy"] * 0.2)
+        )
+        
+        # Calculate bonus multiplier (up to 2x)
+        self.bonus_multiplier = 1.0 + (performance_bonus / 100)
+        
+        # Calculate bonus score
+        self.bonus_score = int(self.base_score * (self.bonus_multiplier - 1.0))
+        
+        # Apply bonus to player score
+        self.level_score = self.base_score + self.bonus_score
+        self.player.score = self.level_score
