@@ -3,8 +3,6 @@ Engine module for Machines of God game.
 Contains core game engine functionality.
 """
 
-# For backward compatibility
-from .state import *
 from .states import MenuState, PlayingState, ShopState, State
 from .visual import ParallaxBackground
 
