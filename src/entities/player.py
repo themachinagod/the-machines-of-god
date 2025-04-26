@@ -442,6 +442,14 @@ class Player(pygame.sprite.Sprite):
             )
             projectile_group.add(projectile)
 
+        elif self.primary_pattern == "single_medium":
+            # Single medium-speed projectile (faster than slow, but not as fast as fast)
+            print("DEBUG: Firing single_medium projectile")
+            projectile = PlayerProjectile(
+                x, y, direction_x, direction_y, self.primary_damage, False, speed=650
+            )
+            projectile_group.add(projectile)
+
         elif self.primary_pattern == "single_fast":
             # Single faster projectile
             projectile = PlayerProjectile(
