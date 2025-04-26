@@ -408,6 +408,10 @@ class Player(pygame.sprite.Sprite):
             current_time (float): Current game time in seconds
             projectile_group (pygame.sprite.Group): Group to add projectiles to
         """
+        # Debug information for weapon firing
+        print(f"DEBUG: Attempting to shoot with pattern: {self.primary_pattern}")
+        print(f"DEBUG: Cooldown status - Last shot: {self.primary_last_shot}, Current: {current_time}, Diff: {current_time - self.primary_last_shot}, Cooldown: {self.primary_cooldown}")
+        
         # Check if cooldown has elapsed
         if current_time - self.primary_last_shot < self.primary_cooldown:
             return False  # Still on cooldown
@@ -422,6 +426,13 @@ class Player(pygame.sprite.Sprite):
         # Get the player position
         x = self.rect.centerx
         y = self.rect.centery
+        
+        # Fix for potential None or invalid pattern - ensure we default to basic pattern if needed
+        if not hasattr(self, 'primary_pattern') or self.primary_pattern is None:
+            print("DEBUG: primary_pattern was None! Setting to default 'single_slow'")
+            self.primary_pattern = "single_slow"
+            
+        print(f"DEBUG: Using weapon pattern: {self.primary_pattern}")
 
         # Create projectiles based on pattern
         if self.primary_pattern == "single_slow":

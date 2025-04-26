@@ -191,9 +191,33 @@ class PlayingState(State):
         # Debug - Print player weapon info
         if hasattr(self, "player") and self.player:
             print(f"DEBUG - Entering PlayingState - Level: {self.current_level}")
-            print(f"DEBUG - Player primary_pattern: {self.player.primary_pattern}")
+            print(f"DEBUG - Player primary_pattern: '{self.player.primary_pattern}'")
             print(f"DEBUG - Player primary_level: {self.player.primary_level}")
             print(f"DEBUG - Player primary_cooldown: {self.player.primary_cooldown}")
+            print(f"DEBUG - Player object ID: {id(self.player)}")
+            
+            # Ensure primary pattern is valid
+            if not hasattr(self.player, 'primary_pattern') or self.player.primary_pattern is None:
+                print("WARNING: primary_pattern is None, setting to default 'single_slow'")
+                self.player.primary_pattern = "single_slow"
+                
+            # Check for upgrades dictionary
+            shop_state = self.game.states.get("shop")
+            if shop_state:
+                print(f"DEBUG - Shop upgrades - primary level: {shop_state.upgrades['primary']['level']}")
+                primary_patterns = shop_state.upgrades['primary']['patterns']
+                primary_level = shop_state.upgrades['primary']['level']
+                print(f"DEBUG - Available patterns: {primary_patterns}")
+                
+                # Verify primary pattern is correctly set
+                if 0 <= primary_level < len(primary_patterns):
+                    expected_pattern = primary_patterns[primary_level]
+                    print(f"DEBUG - Expected pattern: '{expected_pattern}'")
+                    
+                    # Fix if there's a mismatch
+                    if self.player.primary_pattern != expected_pattern:
+                        print(f"FIXING: Pattern mismatch! Setting to {expected_pattern}")
+                        self.player.primary_pattern = expected_pattern
 
         # Store player attributes if they exist and we're continuing a game
         player_attributes = {}

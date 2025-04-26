@@ -237,6 +237,8 @@ class ShopState(State):
                         # Debug print to verify pattern change
                         print(f"DEBUG - Primary weapon upgraded to level {player.primary_level}")
                         print(f"DEBUG - New pattern: {player.primary_pattern}")
+                        print(f"DEBUG - All patterns: {upgrade['patterns']}")
+                        print(f"DEBUG - Index used: {upgrade['level']}")
                     elif key == "shield":
                         player.max_shield = upgrade["values"][upgrade["level"]]
                         player.shield_recharge_rate = upgrade["recharge"][upgrade["level"]]
