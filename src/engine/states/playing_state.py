@@ -12,6 +12,7 @@ from engine.managers.ui_manager import UIManager
 from engine.visual import ParallaxBackground
 from entities.collectible import Star
 from entities.player import Player
+from utils.logger import get_logger
 
 from .base_state import State
 
@@ -27,6 +28,10 @@ class PlayingState(State):
         """
         super().__init__(game)
 
+        # Initialize logger
+        self.logger = get_logger()
+        self.logger.info("Initializing PlayingState")
+
         # Initialize font for UI
         self.font = pygame.font.Font(None, 24)
 
@@ -37,6 +42,7 @@ class PlayingState(State):
         self.player_missiles = pygame.sprite.Group()
         self.enemy_projectiles = pygame.sprite.Group()
         self.collectibles = pygame.sprite.Group()
+        self.logger.debug("Sprite groups initialized")
 
         # Create sprite groups dictionary for easier manager access
         self.sprite_groups = {
@@ -53,6 +59,7 @@ class PlayingState(State):
         self.all_sprites.add(self.player)
         # Set player boundaries to virtual screen dimensions
         self.player.set_screen_boundaries(game.width, game.height)
+        self.logger.debug("Player created at position (%d, %d)", game.width // 2, game.height - 100)
 
         # Background scrolling
         self.bg_y = 0
@@ -60,6 +67,7 @@ class PlayingState(State):
 
         # Initialize parallax background
         self.background = ParallaxBackground(game.width, game.height)
+        self.logger.debug("Parallax background initialized")
 
         # Game timing
         self.game_time = 0
@@ -75,6 +83,7 @@ class PlayingState(State):
         self.completion_delay = 3.0  # Time to show completion message
 
         # Initialize wave definitions for level 1
+        self.logger.debug("Setting up base wave definitions")
         self.base_waves = [
             # Wave 1: Basic enemies, easy pattern
             {
@@ -121,6 +130,7 @@ class PlayingState(State):
                 ],
             },
         ]
+        self.logger.debug("Defined %d base waves", len(self.base_waves))
 
         # Game progression data
         self.total_stars_collected = 0
@@ -150,8 +160,12 @@ class PlayingState(State):
         # Initialize managers
         self._init_managers()
 
+        self.logger.info("PlayingState initialized successfully")
+
     def _init_managers(self):
         """Initialize all game manager components."""
+        self.logger.debug("Initializing game managers")
+
         # Create collectible manager
         self.collectible_manager = CollectibleManager(
             self.game.width, self.game.height, self.all_sprites, self.collectibles
@@ -181,22 +195,38 @@ class PlayingState(State):
         # Set up the level
         self._setup_level()
 
+        self.logger.debug("All managers initialized successfully")
+
     def _setup_level(self):
         """Set up the level based on current level number."""
+        self.logger.info("Setting up level %d", self.current_level)
+
         # Get difficulty-scaled waves
         scaled_waves = self.level_manager.scale_difficulty(self.base_waves)
 
         # Initialize enemy manager with scaled waves
         self.enemy_manager.set_waves(scaled_waves)
 
+        self.logger.debug(
+            "Level %d setup complete with %d waves", self.current_level, len(scaled_waves)
+        )
+
     def enter(self):
         """Called when entering the playing state."""
+        self.logger.info("Entering PlayingState (level %d)", self.current_level)
+
         # Set player boundaries to match the game's virtual dimensions
         if hasattr(self, "player") and self.player:
             self.player.set_screen_boundaries(self.game.width, self.game.height)
 
         # Debug - Print player weapon info
         if hasattr(self, "player") and self.player:
+            self.logger.debug(
+                "Player weapon info - primary_pattern: '%s', level: %d, cooldown: %.2f",
+                self.player.primary_pattern,
+                self.player.primary_level,
+                self.player.primary_cooldown,
+            )
             print(f"DEBUG - Entering PlayingState - Level: {self.current_level}")
             print(f"DEBUG - Player primary_pattern: '{self.player.primary_pattern}'")
             print(f"DEBUG - Player primary_level: {self.player.primary_level}")
@@ -205,24 +235,33 @@ class PlayingState(State):
 
             # Ensure primary pattern is valid
             if not hasattr(self.player, "primary_pattern") or self.player.primary_pattern is None:
+                self.logger.warning("Primary pattern is None, setting to default 'single_slow'")
                 print("WARNING: primary_pattern is None, setting to default 'single_slow'")
                 self.player.primary_pattern = "single_slow"
 
             # Check for upgrades dictionary
             shop_state = self.game.states.get("shop")
             if shop_state:
+                self.logger.debug("Shop primary level: %d", shop_state.upgrades["primary"]["level"])
                 print(f"DEBUG - Shop primary level: {shop_state.upgrades['primary']['level']}")
                 primary_patterns = shop_state.upgrades["primary"]["patterns"]
                 primary_level = shop_state.upgrades["primary"]["level"]
+                self.logger.debug("Available patterns: %s", primary_patterns)
                 print(f"DEBUG - Available patterns: {primary_patterns}")
 
                 # Verify primary pattern is correctly set
                 if 0 <= primary_level < len(primary_patterns):
                     expected_pattern = primary_patterns[primary_level]
+                    self.logger.debug("Expected pattern: '%s'", expected_pattern)
                     print(f"DEBUG - Expected pattern: '{expected_pattern}'")
 
                     # Fix if there's a mismatch
                     if self.player.primary_pattern != expected_pattern:
+                        self.logger.warning(
+                            "Pattern mismatch! Setting %s to %s",
+                            self.player.primary_pattern,
+                            expected_pattern,
+                        )
                         print(f"FIXING: Pattern mismatch! Setting to {expected_pattern}")
                         self.player.primary_pattern = expected_pattern
 
@@ -247,15 +286,21 @@ class PlayingState(State):
                 "score": self.player.score,
                 "lives": self.player.lives,
             }
+            self.logger.debug("Stored player attributes for continuation")
 
         # Reset player position if needed
         self.player.rect.centerx = self.game.width // 2
         self.player.rect.bottom = self.game.height - 50
+        self.logger.debug(
+            "Reset player position to (%d, %d)", self.player.rect.centerx, self.player.rect.bottom
+        )
 
         # Clear all sprites except player
+        sprite_count = len(self.all_sprites) - 1  # subtract player
         for sprite in self.all_sprites:
             if sprite != self.player:
                 sprite.kill()
+        self.logger.debug("Cleared %d sprites (excluding player)", sprite_count)
 
         # Reset game entities
         self.enemies.empty()
@@ -263,6 +308,7 @@ class PlayingState(State):
         self.player_missiles.empty()
         self.enemy_projectiles.empty()
         self.collectibles.empty()
+        self.logger.debug("All sprite groups emptied")
 
         # Reset level data for current level
         self.level_time = 0
@@ -272,6 +318,7 @@ class PlayingState(State):
         # Keep persistent stats across levels, but reset for new game
         if not player_attributes and (self.player.health <= 0 or self.current_level == 1):
             # Reset stats for new game
+            self.logger.info("Starting new game - resetting all statistics")
             self.stats = {
                 "enemies_killed": 0,
                 "enemies_escaped": 0,
@@ -286,16 +333,20 @@ class PlayingState(State):
 
         # Restore player attributes if we had any
         if player_attributes:
+            self.logger.debug("Restoring player attributes from previous state")
             for attr, value in player_attributes.items():
                 setattr(self.player, attr, value)
         # Else ensure player has appropriate starting stats if new game
         elif self.player.health <= 0:
+            self.logger.debug("Player has no health, resetting to starting values")
             self.player.health = self.player.max_health
             self.player.lives = 3
             self.player.score = 0
 
         # Setup level
         self._setup_level()
+
+        self.logger.info("PlayingState entered successfully")
 
     def handle_event(self, event):
         """Handle input events for the playing state.
@@ -305,6 +356,7 @@ class PlayingState(State):
         """
         # If showing level summary, any key proceeds to shop
         if self.showing_level_summary and event.type == pygame.KEYDOWN:
+            self.logger.info("Key pressed during level summary, proceeding to shop")
             self.showing_level_summary = False
             self.summary_timer = 0
             # Save current game state for persistence
@@ -317,19 +369,27 @@ class PlayingState(State):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_p:
                 # Will implement pause state later
+                self.logger.debug("Pause key pressed (not implemented)")
                 pass
             # Fire when space is pressed
             elif event.key == pygame.K_SPACE:
-                self.player.shoot(self.game_time, self.player_projectiles)
+                self.logger.debug("Space pressed, player shooting")
+                if self.player.shoot(self.game_time, self.player_projectiles):
+                    self.logger.debug("Player fired primary weapon")
                 # Add new projectiles to all_sprites
                 for proj in self.player_projectiles:
                     if proj not in self.all_sprites:
                         self.all_sprites.add(proj)
             # Fire missile with M key if available
             elif event.key == pygame.K_m:
+                self.logger.debug("M key pressed, attempting to fire missile")
                 # Find the closest enemy for targeting
                 target = self._find_closest_enemy()
                 if self.player.fire_missile(self.game_time, self.player_missiles, target):
+                    self.logger.debug(
+                        "Player fired missile at target: %s",
+                        target.rect.center if target else "None",
+                    )
                     # Add new missiles to all_sprites
                     for missile in self.player_missiles:
                         if missile not in self.all_sprites:
@@ -357,6 +417,9 @@ class PlayingState(State):
                 min_distance = distance
                 closest = enemy
 
+        if closest:
+            self.logger.debug("Found closest enemy at distance %.2f", min_distance)
+
         return closest
 
     def update(self, dt):
@@ -372,6 +435,7 @@ class PlayingState(State):
         if self.showing_level_summary:
             self.summary_timer += dt
             if self.summary_timer >= self.summary_duration:
+                self.logger.info("Level summary display time elapsed, transitioning to shop")
                 self.showing_level_summary = False
                 self.summary_timer = 0
                 # Save current game state for persistence
@@ -385,6 +449,7 @@ class PlayingState(State):
 
         # If level is complete, calculate final score and show summary
         if level_changed and self.level_manager.is_level_complete():
+            self.logger.info("Level %d completed! Calculating final score", self.current_level)
             self._calculate_level_score()
             self.showing_level_summary = True
             return  # Skip other updates if level is complete
@@ -402,16 +467,27 @@ class PlayingState(State):
         self.collectible_manager.update(dt)
 
         # Track stars that went off-screen
+        missed_stars = 0
         for collectible in list(self.collectibles):
             if collectible.rect.top > self.game.height:
                 if isinstance(collectible, Star):
                     self.stats["stars_missed"] += 1
+                    missed_stars += 1
                 collectible.kill()
 
+        if missed_stars > 0:
+            self.logger.debug("%d stars missed (went off-screen)", missed_stars)
+
         # Track enemies that escaped
+        escaped_enemies = 0
         for enemy in list(self.enemies):
             if enemy.rect.top > self.game.height:
                 self.stats["enemies_escaped"] += 1
+                escaped_enemies += 1
+                enemy.kill()
+
+        if escaped_enemies > 0:
+            self.logger.debug("%d enemies escaped (went off-screen)", escaped_enemies)
 
         # Update collection rate and kill rate statistics
         total_stars = self.stats["stars_collected"] + self.stats["stars_missed"]
@@ -439,6 +515,7 @@ class PlayingState(State):
 
         # Check if player was killed
         if player_killed:
+            self.logger.info("Player was killed! Returning to menu")
             # Game over - return to menu
             self.game.change_state("menu")
 
@@ -464,9 +541,14 @@ class PlayingState(State):
                 self.stats["shots_fired"] += 1
 
                 # Add new projectiles to all_sprites
+                new_projs = 0
                 for proj in self.player_projectiles:
                     if proj not in self.all_sprites:
                         self.all_sprites.add(proj)
+                        new_projs += 1
+
+                if new_projs > 0:
+                    self.logger.debug("Player fired %d new projectiles", new_projs)
 
         # Update projectiles and missiles
         self.player_projectiles.update(dt)
@@ -503,6 +585,8 @@ class PlayingState(State):
         Args:
             screen: The pygame surface to render to
         """
+        self.logger.debug("Drawing level %d summary screen", self.current_level)
+
         # Semi-transparent overlay
         overlay = pygame.Surface((self.game.width, self.game.height), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 180))  # RGBA, semi-transparent black
@@ -648,15 +732,19 @@ class PlayingState(State):
 
     def _calculate_level_score(self):
         """Calculate final level score with performance bonuses."""
+        self.logger.info("Calculating level score with performance bonuses")
+
         # Calculate score based on performance metrics
         performance_bonus = (
             (self.stats["kill_rate"] * 0.5)
             + (self.stats["collection_rate"] * 0.3)
             + (self.stats["accuracy"] * 0.2)
         )
+        self.logger.debug("Raw performance bonus: %.2f", performance_bonus)
 
         # Calculate bonus multiplier (up to 2x)
         self.bonus_multiplier = 1.0 + (performance_bonus / 100)
+        self.logger.debug("Final bonus multiplier: %.2f", self.bonus_multiplier)
 
         # Calculate bonus score
         self.bonus_score = int(self.base_score * (self.bonus_multiplier - 1.0))
@@ -664,3 +752,10 @@ class PlayingState(State):
         # Apply bonus to player score
         self.level_score = self.base_score + self.bonus_score
         self.player.score = self.level_score
+
+        self.logger.info(
+            "Level score calculated: base=%d, bonus=%d, total=%d",
+            self.base_score,
+            self.bonus_score,
+            self.level_score,
+        )

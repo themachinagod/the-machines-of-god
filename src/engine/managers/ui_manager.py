@@ -4,6 +4,8 @@ UI management for the game.
 
 import pygame
 
+from utils.logger import get_logger
+
 
 class UIManager:
     """Manages UI rendering and interaction."""
@@ -15,12 +17,25 @@ class UIManager:
             game_width (int): Width of the game screen
             game_height (int): Height of the game screen
         """
+        # Initialize logger
+        self.logger = get_logger()
+        self.logger.info("Initializing UIManager")
+
         self.width = game_width
         self.height = game_height
+        self.logger.debug("UI dimensions: %dx%d", game_width, game_height)
 
         # Initialize fonts
-        self.font = pygame.font.Font(None, 24)
-        self.large_font = pygame.font.Font(None, 72)
+        self.logger.debug("Loading fonts")
+        try:
+            self.font = pygame.font.Font(None, 24)
+            self.large_font = pygame.font.Font(None, 72)
+            self.logger.debug("Fonts loaded successfully")
+        except pygame.error as e:
+            self.logger.error("Error loading fonts: %s", str(e))
+            raise
+
+        self.logger.info("UIManager initialized successfully")
 
     def render(self, screen, player, level_manager, enemy_manager, total_stars):
         """Render all UI elements.
@@ -37,6 +52,9 @@ class UIManager:
 
         # Draw level completion message if applicable
         if level_manager.is_level_complete():
+            self.logger.debug(
+                "Rendering level complete message for level %d", level_manager.current_level
+            )
             self._draw_level_complete_message(screen, level_manager.current_level)
 
         # Draw shield indicator if player has shield
@@ -92,6 +110,7 @@ class UIManager:
             screen (pygame.Surface): The surface to render on
             level_number (int): Current level number
         """
+        self.logger.debug("Drawing level %d completion message", level_number)
         complete_text = self.large_font.render(
             f"Level {level_number} Complete!", True, (255, 220, 50)
         )
